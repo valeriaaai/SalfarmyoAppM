@@ -451,8 +451,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final titles = [
       'Dashboard',
-      'Boarders',
       'Bedspace map',
+      'Boarders',
       'Rent',
       'Complaints',
     ];
@@ -463,8 +463,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpen: _go,
         onRefresh: refresh,
       ),
-      BoardersPage(refreshKey: _refresh, onRefresh: refresh),
       RoomsPage(refreshKey: _refresh, onRefresh: refresh),
+      BoardersPage(refreshKey: _refresh, onRefresh: refresh),
       RentPage(refreshKey: _refresh, onRefresh: refresh),
       ComplaintsPage(refreshKey: _refresh, onRefresh: refresh),
     ];
@@ -488,7 +488,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        onDestinationSelected: (value) => setState(() {
+          _index = value;
+          if (value == 3) _refresh++;
+        }),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.space_dashboard_outlined),
@@ -496,14 +499,14 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded),
-            label: 'Boarders',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.grid_view_rounded),
             selectedIcon: Icon(Icons.grid_view_rounded),
             label: 'Rooms',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
+            label: 'Boarders',
           ),
           NavigationDestination(
             icon: Icon(Icons.payments_outlined),
@@ -654,21 +657,21 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: stats['boarders'] ?? 0,
                 icon: Icons.people_alt_rounded,
                 tint: const Color(0xFFE8E2F5),
-                onTap: () => widget.onOpen(1),
+                onTap: () => widget.onOpen(2),
               ),
               _StatCard(
                 label: 'Occupied rooms',
                 value: stats['occupiedRooms'] ?? 0,
                 icon: Icons.meeting_room_rounded,
                 tint: const Color(0xFFFBE3E9),
-                onTap: () => widget.onOpen(2),
+                onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Open beds',
                 value: stats['availableBeds'] ?? 0,
                 icon: Icons.bed_rounded,
                 tint: const Color(0xFFE1F1E9),
-                onTap: () => widget.onOpen(2),
+                onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Unpaid rent',
@@ -679,6 +682,12 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => widget.onOpen(1),
+            icon: const Icon(Icons.meeting_room_rounded),
+            label: const Text('Go to bedspaces and assign a boarder'),
+          ),
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -688,12 +697,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 subtitle: 'A quick occupancy preview',
               ),
               TextButton(
-                onPressed: () => widget.onOpen(2),
+                onPressed: () => widget.onOpen(1),
                 child: const Text('View all'),
               ),
             ],
           ),
-          _BedPreview(onTap: () => widget.onOpen(2)),
+          _BedPreview(onTap: () => widget.onOpen(1)),
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -703,7 +712,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 subtitle: 'All registered residents',
               ),
               TextButton(
-                onPressed: () => widget.onOpen(1),
+                onPressed: () => widget.onOpen(2),
                 child: const Text('See all'),
               ),
             ],
@@ -947,11 +956,11 @@ class _BoardersPageState extends State<BoardersPage> {
   }
 
   Future<void> _edit([Map<String, Object?>? person]) async {
-    final saved = await showDialog<bool>(
+    final saved = await showDialog<int>(
       context: context,
       builder: (_) => BoarderFormDialog(person: person),
     );
-    if (saved == true) {
+    if (saved != null) {
       await _load();
       widget.onRefresh();
     }
@@ -1139,14 +1148,14 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await AppDatabase.instance.saveBoarder(
+      final id = await AppDatabase.instance.saveBoarder(
         id: widget.person?['boarder_id'] as int?,
         first: _first.text,
         last: _last.text,
         phone: _phone.text,
         emergency: _emergency.text,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context, id);
     } catch (error) {
       if (mounted) {
         _showMessage(context, error.toString().replaceFirst('Exception: ', ''));
@@ -1214,6 +1223,7 @@ class BoarderDetailsPage extends StatefulWidget {
 class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
   Map<String, Object?>? _person;
   List<Map<String, Object?>> _payments = [];
+  Map<String, double> _rentSummary = {'due': 0, 'paid': 0};
   bool _loading = true;
 
   @override
@@ -1226,10 +1236,14 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
     try {
       final person = await AppDatabase.instance.boarder(widget.id);
       final payments = await AppDatabase.instance.payments(widget.id);
+      final rentSummary = await AppDatabase.instance.boarderRentSummary(
+        widget.id,
+      );
       if (mounted) {
         setState(() {
           _person = person;
           _payments = payments;
+          _rentSummary = rentSummary;
           _loading = false;
         });
       }
@@ -1243,7 +1257,21 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Boarder details'),
+        title: const Text('Boarder summary'),
+        actions: [
+          if (_person != null)
+            IconButton(
+              tooltip: 'Edit boarder',
+              onPressed: () async {
+                final saved = await showDialog<int>(
+                  context: context,
+                  builder: (_) => BoarderFormDialog(person: _person),
+                );
+                if (saved != null) await _load();
+              },
+              icon: const Icon(Icons.edit_outlined),
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: rose))
@@ -1271,6 +1299,24 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
                       _person!['room_number'] == null
                           ? 'Not assigned'
                           : 'Room ${_person!['room_number']} · ${_person!['bed_code']}',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _InfoCard(
+                  title: 'Rent summary',
+                  rows: [
+                    (
+                      'Total due',
+                      '₱${_rentSummary['due']!.toStringAsFixed(2)}',
+                    ),
+                    (
+                      'Total paid',
+                      '₱${_rentSummary['paid']!.toStringAsFixed(2)}',
+                    ),
+                    (
+                      'Balance',
+                      '₱${(_rentSummary['due']! - _rentSummary['paid']!).clamp(0, double.infinity).toStringAsFixed(2)}',
                     ),
                   ],
                 ),
@@ -1514,11 +1560,22 @@ class _RoomsPageState extends State<RoomsPage> {
     try {
       final people = await AppDatabase.instance.boarders();
       if (!mounted) return;
+      if (people.isEmpty) {
+        final id = await showDialog<int>(
+          context: context,
+          builder: (_) => const BoarderFormDialog(),
+        );
+        if (id == null) return;
+        await AppDatabase.instance.assignBed(id, bed['bed_id']! as int);
+        await _load();
+        widget.onRefresh();
+        return;
+      }
       final id = await showModalBottomSheet<int>(
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
-        builder: (_) => SafeArea(
+        builder: (sheetContext) => SafeArea(
           child: SizedBox(
             height: MediaQuery.sizeOf(context).height * .65,
             child: Column(
@@ -1536,31 +1593,44 @@ class _RoomsPageState extends State<RoomsPage> {
                 ),
                 Expanded(
                   child: ListView(
-                    children: people
-                        .map(
-                          (person) => ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: lilac,
-                              child: Icon(
-                                Icons.person_outline,
-                                color: roseDark,
-                              ),
-                            ),
-                            title: Text(
-                              '${person['first_name']} ${person['last_name']}',
-                            ),
-                            subtitle: Text(
-                              person['room_number'] == null
-                                  ? 'Not assigned'
-                                  : 'Currently in ${person['room_number']}',
-                            ),
-                            onTap: () => Navigator.pop(
-                              context,
-                              person['boarder_id']! as int,
-                            ),
+                    children: [
+                      ...people.map(
+                        (person) => ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: lilac,
+                            child: Icon(Icons.person_outline, color: roseDark),
                           ),
-                        )
-                        .toList(),
+                          title: Text(
+                            '${person['first_name']} ${person['last_name']}',
+                          ),
+                          subtitle: Text(
+                            person['room_number'] == null
+                                ? 'Not assigned'
+                                : 'Currently in ${person['room_number']}',
+                          ),
+                          onTap: () => Navigator.pop(
+                            sheetContext,
+                            person['boarder_id']! as int,
+                          ),
+                        ),
+                      ),
+                      ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: lilac,
+                          child: Icon(Icons.person_add_alt_1, color: roseDark),
+                        ),
+                        title: const Text('Add new boarder and assign'),
+                        onTap: () async {
+                          final newId = await showDialog<int>(
+                            context: context,
+                            builder: (_) => const BoarderFormDialog(),
+                          );
+                          if (newId != null && sheetContext.mounted) {
+                            Navigator.pop(sheetContext, newId);
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1641,89 +1711,95 @@ class _RoomCard extends StatelessWidget {
   final ValueChanged<Map<String, Object?>> onBedTap;
 
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 10),
-    elevation: 0,
-    color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    child: Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.meeting_room_outlined,
-                size: 18,
-                color: roseDark,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Room $room',
-                style: const TextStyle(fontWeight: FontWeight.w800, color: ink),
-              ),
-              const Spacer(),
-              Text(
-                '${beds.where((bed) => bed['boarder_id'] != null).length}/${beds.length} occupied',
-                style: const TextStyle(color: muted, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: beds.map((bed) {
-              final occupied = bed['boarder_id'] != null;
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => onBedTap(bed),
-                child: Container(
-                  width: 78,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: occupied
-                        ? const Color(0xFFFBE4E9)
-                        : const Color(0xFFE4F3EB),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.bed_rounded,
-                        color: occupied ? roseDark : green,
-                        size: 18,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${bed['code']}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: occupied ? roseDark : green,
-                        ),
-                      ),
-                      Text(
-                        occupied
-                            ? '${bed['occupant']}'.split(' ').first
-                            : 'Available',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 9, color: muted),
-                      ),
-                    ],
+  Widget build(BuildContext context) {
+    final occupiedCount = beds.where((bed) => bed['boarder_id'] != null).length;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.meeting_room_outlined,
+                  size: 18,
+                  color: roseDark,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Room $room',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: ink,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-        ],
+                const Spacer(),
+                Text(
+                  '$occupiedCount occupied · ${beds.length - occupiedCount} available',
+                  style: const TextStyle(color: muted, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: beds.map((bed) {
+                final occupied = bed['boarder_id'] != null;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => onBedTap(bed),
+                  child: Container(
+                    width: 78,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: occupied
+                          ? const Color(0xFFFBE4E9)
+                          : const Color(0xFFE4F3EB),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.bed_rounded,
+                          color: occupied ? roseDark : green,
+                          size: 18,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${bed['code']}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: occupied ? roseDark : green,
+                          ),
+                        ),
+                        Text(
+                          occupied
+                              ? '${bed['occupant']}'.split(' ').first
+                              : 'Available',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 9, color: muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class RentPage extends StatefulWidget {
@@ -1740,14 +1816,15 @@ class RentPage extends StatefulWidget {
 }
 
 class _RentPageState extends State<RentPage> {
-  final _search = TextEditingController();
   List<Map<String, Object?>> _charges = [];
+  List<String> _availableMonths = [_currentMonth()];
+  String _statusFilter = 'All';
+  String _monthFilter = _currentMonth();
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _search.addListener(_load);
     _load();
   }
 
@@ -1757,18 +1834,35 @@ class _RentPageState extends State<RentPage> {
     if (oldWidget.refreshKey != widget.refreshKey) _load();
   }
 
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
     try {
-      final rows = await AppDatabase.instance.charges(_search.text);
+      await AppDatabase.instance.ensureCurrentMonthCharges();
+      final rows = await AppDatabase.instance.charges();
+      final months =
+          rows
+              .map((charge) => charge['billing_month']! as String)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+      if (!months.contains(_currentMonth())) months.insert(0, _currentMonth());
+      if (_monthFilter != 'All months' && !months.contains(_monthFilter)) {
+        _monthFilter = _currentMonth();
+      }
+      final filteredRows = rows.where((charge) {
+        final monthMatches =
+            _monthFilter == 'All months' ||
+            charge['billing_month'] == _monthFilter;
+        final due = (charge['amount_due']! as num).toDouble();
+        final paid = (charge['amount_paid']! as num).toDouble();
+        final statusMatches =
+            _statusFilter == 'All' ||
+            (_statusFilter == 'Paid' ? paid >= due : paid < due);
+        return monthMatches && statusMatches;
+      }).toList();
       if (mounted) {
         setState(() {
-          _charges = rows;
+          _charges = filteredRows;
+          _availableMonths = months;
           _loading = false;
         });
       }
@@ -1777,15 +1871,26 @@ class _RentPageState extends State<RentPage> {
     }
   }
 
-  Future<void> _addRent() async {
+  Future<void> _editRent(Map<String, Object?> charge) async {
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => const AddRentDialog(),
+      builder: (_) => EditRentDialog(charge: charge),
     );
     if (saved == true) {
       await _load();
       widget.onRefresh();
     }
+  }
+
+  void _showHistory(Map<String, Object?> charge) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PaymentHistoryPage(
+          id: charge['boarder_id']! as int,
+          name: '${charge['boarder_name']}',
+        ),
+      ),
+    );
   }
 
   Future<void> _pay(Map<String, Object?> charge) async {
@@ -1813,17 +1918,80 @@ class _RentPageState extends State<RentPage> {
     }
   }
 
+  Future<void> _markPaid(Map<String, Object?> charge) async {
+    final due = (charge['amount_due'] as num).toDouble();
+    final paid = (charge['amount_paid'] as num).toDouble();
+    final balance = due - paid;
+    final confirmed = await _confirm(
+      context,
+      'Mark rent as paid?',
+      'Record the remaining ₱${balance.toStringAsFixed(2)} for '
+          '${charge['boarder_name']} (${charge['billing_month']}) as a payment?',
+      confirmLabel: 'Save Changes',
+      confirmColor: green,
+    );
+    if (!confirmed) return;
+    try {
+      await AppDatabase.instance.recordPayment(
+        charge['charge_id']! as int,
+        balance,
+        'Payment received',
+      );
+      await _load();
+      widget.onRefresh();
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, error.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
-        child: TextField(
-          controller: _search,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search_rounded),
-            hintText: 'Search boarder or billing month',
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _monthFilter,
+                decoration: const InputDecoration(labelText: 'Billing month'),
+                items: [
+                  const DropdownMenuItem(
+                    value: 'All months',
+                    child: Text('All months'),
+                  ),
+                  ..._availableMonths.map(
+                    (month) =>
+                        DropdownMenuItem(value: month, child: Text(month)),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _monthFilter = value);
+                  _load();
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _statusFilter,
+                decoration: const InputDecoration(labelText: 'Payment status'),
+                items: const [
+                  DropdownMenuItem(value: 'All', child: Text('All')),
+                  DropdownMenuItem(value: 'Paid', child: Text('Paid')),
+                  DropdownMenuItem(value: 'Unpaid', child: Text('Unpaid')),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _statusFilter = value);
+                  _load();
+                },
+              ),
+            ),
+          ],
         ),
       ),
       Expanded(
@@ -1895,45 +2063,62 @@ class _RentPageState extends State<RentPage> {
                               _MoneyLabel('Balance', balance, emphasis: true),
                             ],
                           ),
-                          if (balance > .001) ...[
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () => _pay(charge),
-                                icon: const Icon(
-                                  Icons.add_card_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text('Record payment'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: roseDark,
-                                  side: const BorderSide(
-                                    color: Color(0xFFF0C7D2),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () => _editRent(charge),
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('Edit rent'),
+                              ),
+                              if (balance > .001)
+                                OutlinedButton.icon(
+                                  onPressed: () => _pay(charge),
+                                  icon: const Icon(
+                                    Icons.add_card_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Record payment'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: roseDark,
+                                    side: const BorderSide(
+                                      color: Color(0xFFF0C7D2),
+                                    ),
                                   ),
                                 ),
+                              if (balance > .001)
+                                OutlinedButton.icon(
+                                  onPressed: () => _markPaid(charge),
+                                  icon: const Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Mark paid'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: green,
+                                    side: const BorderSide(
+                                      color: Color(0xFFB9E2D0),
+                                    ),
+                                  ),
+                                ),
+                              OutlinedButton.icon(
+                                onPressed: () => _showHistory(charge),
+                                icon: const Icon(
+                                  Icons.history_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text('Payment history'),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   );
                 },
               ),
-      ),
-      Align(
-        alignment: Alignment.bottomRight,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
-          child: FloatingActionButton.extended(
-            onPressed: _addRent,
-            backgroundColor: rose,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add rent'),
-          ),
-        ),
       ),
     ],
   );
@@ -1959,6 +2144,85 @@ class _MoneyLabel extends StatelessWidget {
           fontSize: 12,
         ),
       ),
+    ],
+  );
+}
+
+class EditRentDialog extends StatefulWidget {
+  const EditRentDialog({super.key, required this.charge});
+  final Map<String, Object?> charge;
+
+  @override
+  State<EditRentDialog> createState() => _EditRentDialogState();
+}
+
+class _EditRentDialogState extends State<EditRentDialog> {
+  late final TextEditingController _amount;
+  late final TextEditingController _dueDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _amount = TextEditingController(
+      text: (widget.charge['amount_due']! as num).toStringAsFixed(2),
+    );
+    _dueDate = TextEditingController(text: '${widget.charge['due_date']}');
+  }
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _dueDate.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final amount = double.tryParse(_amount.text);
+    if (amount == null) {
+      _showMessage(context, 'Enter a valid rent amount.');
+      return;
+    }
+    try {
+      await AppDatabase.instance.updateCharge(
+        widget.charge['charge_id']! as int,
+        amount,
+        _dueDate.text.trim(),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, error.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Edit rent record'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${widget.charge['boarder_name']} · ${widget.charge['billing_month']}',
+          style: const TextStyle(fontWeight: FontWeight.w700, color: ink),
+        ),
+        const SizedBox(height: 14),
+        _formField(
+          _amount,
+          'Amount due',
+          keyboard: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 12),
+        _formField(_dueDate, 'Due date (YYYY-MM-DD)'),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Save changes')),
     ],
   );
 }
@@ -2023,7 +2287,7 @@ class _AddRentDialogState extends State<AddRentDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Add monthly rent'),
+    title: const Text('Add monthly rent record'),
     content: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2151,6 +2415,8 @@ class ComplaintsPage extends StatefulWidget {
 class _ComplaintsPageState extends State<ComplaintsPage> {
   final _search = TextEditingController();
   List<Map<String, Object?>> _rows = [];
+  String _statusFilter = 'All';
+  bool _showHistory = false;
 
   @override
   void initState() {
@@ -2173,16 +2439,30 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
 
   Future<void> _load() async {
     try {
-      final rows = await AppDatabase.instance.complaints(_search.text);
+      final rows = _showHistory
+          ? await AppDatabase.instance.resolvedComplaints(_search.text)
+          : await AppDatabase.instance.complaints(_search.text, _statusFilter);
       if (mounted) setState(() => _rows = rows);
     } catch (error) {
       if (mounted) _showMessage(context, 'Could not load complaints: $error');
     }
   }
 
+  void _toggleHistory() {
+    setState(() {
+      _showHistory = !_showHistory;
+      _statusFilter = 'All';
+    });
+    _load();
+  }
+
   Future<void> _add() async {
     final people = await AppDatabase.instance.boarders();
     if (!mounted) return;
+    if (people.isEmpty) {
+      _showMessage(context, 'Add a boarder before recording a complaint.');
+      return;
+    }
     final saved = await showDialog<bool>(
       context: context,
       builder: (_) => AddComplaintDialog(people: people),
@@ -2203,24 +2483,78 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     }
   }
 
+  Future<void> _deleteFromHistory(int id, String boarderName) async {
+    final confirmed = await _confirm(
+      context,
+      'Delete resolved complaint?',
+      'Permanently delete the resolved complaint from $boarderName?',
+    );
+    if (!confirmed) return;
+    try {
+      await AppDatabase.instance.deleteComplaint(id);
+      await _load();
+      widget.onRefresh();
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, 'Could not delete complaint: $error');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            onPressed: _toggleHistory,
+            icon: Icon(
+              _showHistory ? Icons.list_alt_rounded : Icons.history_rounded,
+            ),
+            label: Text(_showHistory ? 'Active complaints' : 'History'),
+          ),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
         child: TextField(
           controller: _search,
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search_rounded),
-            hintText: 'Search boarder, issue or status',
+            hintText: 'Search boarder or issue',
           ),
         ),
       ),
+      if (!_showHistory)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+          child: DropdownButtonFormField<String>(
+            initialValue: _statusFilter,
+            decoration: const InputDecoration(labelText: 'Show complaints'),
+            items: const [
+              DropdownMenuItem(value: 'All', child: Text('All statuses')),
+              DropdownMenuItem(value: 'Unresolved', child: Text('Unresolved')),
+              DropdownMenuItem(
+                value: 'Being handled',
+                child: Text('Being handled'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _statusFilter = value);
+              _load();
+            },
+          ),
+        ),
       Expanded(
         child: _rows.isEmpty
-            ? const _EmptyState(
+            ? _EmptyState(
                 icon: Icons.chat_bubble_outline_rounded,
-                text: 'No complaints found',
+                text: _showHistory
+                    ? 'No resolved complaints in history'
+                    : 'No complaints found',
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 88),
@@ -2256,28 +2590,41 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                                   ),
                                 ),
                               ),
-                              PopupMenuButton<String>(
-                                tooltip: 'Change status',
-                                onSelected: (value) => _changeStatus(
-                                  row['complaint_id']! as int,
-                                  value,
+                              if (_showHistory)
+                                IconButton(
+                                  tooltip: 'Delete from history',
+                                  onPressed: () => _deleteFromHistory(
+                                    row['complaint_id']! as int,
+                                    '${row['boarder_name']}',
+                                  ),
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: red,
+                                  ),
+                                )
+                              else
+                                PopupMenuButton<String>(
+                                  tooltip: 'Change status',
+                                  onSelected: (value) => _changeStatus(
+                                    row['complaint_id']! as int,
+                                    value,
+                                  ),
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'Unresolved',
+                                      child: Text('Unresolved'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'Being handled',
+                                      child: Text('Being handled'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'Resolved',
+                                      child: Text('Resolved'),
+                                    ),
+                                  ],
+                                  child: _StatusPill(status, color),
                                 ),
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'Unresolved',
-                                    child: Text('Unresolved'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'Being handled',
-                                    child: Text('Being handled'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'Resolved',
-                                    child: Text('Resolved'),
-                                  ),
-                                ],
-                                child: _StatusPill(status, color),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -2287,9 +2634,19 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Reported ${row['date_reported']}',
+                            'Posted: ${row['date_reported']}',
                             style: const TextStyle(fontSize: 12, color: muted),
                           ),
+                          if (_showHistory) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Resolved: ${row['resolved_at'] ?? '—'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: muted,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -2297,19 +2654,20 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                 },
               ),
       ),
-      Align(
-        alignment: Alignment.bottomRight,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
-          child: FloatingActionButton.extended(
-            onPressed: _add,
-            backgroundColor: rose,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add_comment_rounded),
-            label: const Text('New complaint'),
+      if (!_showHistory)
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
+            child: FloatingActionButton.extended(
+              onPressed: _add,
+              backgroundColor: rose,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_comment_rounded),
+              label: const Text('New complaint'),
+            ),
           ),
         ),
-      ),
     ],
   );
 }
@@ -2491,8 +2849,10 @@ class _EmptyState extends StatelessWidget {
 Future<bool> _confirm(
   BuildContext context,
   String title,
-  String message,
-) async =>
+  String message, {
+  String confirmLabel = 'Delete',
+  Color confirmColor = red,
+}) async =>
     await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -2504,9 +2864,9 @@ Future<bool> _confirm(
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: red),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
+            child: Text(confirmLabel),
           ),
         ],
       ),

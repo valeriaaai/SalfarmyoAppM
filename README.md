@@ -8,18 +8,22 @@ need an internet connection, a server, or a separate SQL application.
 
 - Animated login with floating background shapes and an entrance animation.
 - Dashboard with boarder, room, available-bed, unpaid-rent, and complaint counts.
-- Boarder directory with search, add/edit/delete, details, and payment history.
-- Room/bedspace map for the seeded buildings; tap an open bed to assign a resident.
-- Rent ledger with search, monthly rent records, payment recording, and balances.
-- Complaint list with search and status changes.
+- Boarder directory with search, add/edit/delete, a rent summary, and payment history.
+- Room/bedspace map; tap an open bed to assign an existing or new boarder.
+- Rent ledger with month and Paid/Unpaid filters, automatically created monthly
+  charges for occupied beds, editable rent records, payment recording, and
+  per-boarder payment history. Each new month starts with a separate unpaid
+  charge while earlier months and payments remain in the ledger.
+- Complaint list with search, status filters, and status changes.
 - Local SQLite tables based on the Python prototype's schema.
 - Layouts built with scrolling and flexible Flutter widgets for different screen sizes.
 
 ## First run data
 
 The first launch creates a private `salfarmyo.db` in Android's app data folder,
-then creates the owner, rooms, beds, sample residents, rent records, and
-complaints. Starter login:
+then creates the owner and room/bed layout. Boarders, rent, payments, and
+complaints start empty; records you add are saved in this local database.
+Starter login:
 
 ```text
 Username: admin
@@ -28,9 +32,21 @@ Password: admin123
 
 This is a demonstration account; changing the password is not yet available in
 the UI. Implement a change-password flow before deploying the app with real
-resident data. Uninstalling the app clears its private database. The desktop
-`salfarmyo.db` is not automatically copied into the Android app; they are
-separate local databases.
+resident data. Updating from the previous app version removes only the bundled
+demo residents and their related sample records. Uninstalling the app clears
+its private database. The desktop `salfarmyo.db` is not automatically copied
+into the Android app; they are separate local databases.
+
+## Main workflow
+After login, open the dashboard, then use the Rooms tab to select an available
+bed and assign an existing boarder or add a new one. The saved boarder and room
+assignment appear in the searchable Boarders tab, where selecting a boarder
+opens their summary and payment history. The Rent tab opens on the current
+billing month, creates that month's charge from each occupied room's monthly
+rate, and lets you filter by month/status, edit charges, record payments, and
+mark a remaining balance paid. Older months remain available from the month
+filter, and payment history is retained.
+Complaints can be filtered by status and updated as they are handled.
 
 ## Tools to install on Windows
 

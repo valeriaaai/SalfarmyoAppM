@@ -22,11 +22,49 @@ class AppDatabase {
     final root = await getDatabasesPath();
     _database = await openDatabase(
       p.join(root, 'salfarmyo.db'),
-      version: 1,
+      version: 3,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await _createTables(db);
         await _seed(db);
+      },
+      onUpgrade: (db, oldVersion, _) async {
+        if (oldVersion < 2) {
+          await db.delete(
+            'boarder',
+            where: '''
+              (first_name = ? AND last_name = ? AND contact_number = ?) OR
+              (first_name = ? AND last_name = ? AND contact_number = ?) OR
+              (first_name = ? AND last_name = ? AND contact_number = ?) OR
+              (first_name = ? AND last_name = ? AND contact_number = ?) OR
+              (first_name = ? AND last_name = ? AND contact_number = ?) OR
+              (first_name = ? AND last_name = ? AND contact_number = ?)
+            ''',
+            whereArgs: [
+              'Maria',
+              'Santos',
+              '09171230001',
+              'Jenny',
+              'Reyes',
+              '09171230002',
+              'Liza',
+              'Cruz',
+              '09171230003',
+              'Angela',
+              'Garcia',
+              '09171230004',
+              'Katrina',
+              'Lopez',
+              '09171230005',
+              'Bianca',
+              'Ramos',
+              '09171230006',
+            ],
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE complaint ADD COLUMN resolved_at TEXT');
+        }
       },
     );
     return _database!;
@@ -112,6 +150,7 @@ class AppDatabase {
         boarder_id INTEGER NOT NULL REFERENCES boarder(boarder_id) ON DELETE CASCADE,
         description TEXT NOT NULL,
         date_reported TEXT NOT NULL,
+        resolved_at TEXT,
         status TEXT NOT NULL DEFAULT 'Unresolved'
           CHECK (status IN ('Unresolved', 'Being handled', 'Resolved'))
       )
@@ -160,127 +199,6 @@ class AppDatabase {
         'position': 'Private',
       });
     }
-
-    final now = DateTime.now();
-    final thisMonth = _month(now);
-    final previousMonth = _month(DateTime(now.year, now.month, 0));
-    final sample = [
-      [
-        'Maria',
-        'Santos',
-        '09171230001',
-        'Ana Santos 09181230001',
-        '101',
-        '1T',
-        1.0,
-      ],
-      [
-        'Jenny',
-        'Reyes',
-        '09171230002',
-        'Rosa Reyes 09181230002',
-        '101',
-        '1B',
-        0.5,
-      ],
-      [
-        'Liza',
-        'Cruz',
-        '09171230003',
-        'Nena Cruz 09181230003',
-        '102',
-        '1AT',
-        0.0,
-      ],
-      [
-        'Angela',
-        'Garcia',
-        '09171230004',
-        'Tess Garcia 09181230004',
-        '201',
-        'SOLO',
-        1.0,
-      ],
-      [
-        'Katrina',
-        'Lopez',
-        '09171230005',
-        'Mila Lopez 09181230005',
-        '203',
-        'SOLO',
-        0.0,
-      ],
-      [
-        'Bianca',
-        'Ramos',
-        '09171230006',
-        'Gina Ramos 09181230006',
-        '206',
-        'SOLO',
-        0.5,
-      ],
-    ];
-    final boarderIds = <int>[];
-    for (final person in sample) {
-      final id = await db.insert('boarder', {
-        'first_name': person[0],
-        'last_name': person[1],
-        'contact_number': person[2],
-        'emergency_contact': person[3],
-        'date_added': _date(now),
-      });
-      boarderIds.add(id);
-      final bed = await db.rawQuery(
-        'SELECT bd.bed_id FROM bed bd JOIN room r ON r.room_id = bd.room_id '
-        'WHERE r.room_number = ? AND bd.code = ?',
-        [person[4], person[5]],
-      );
-      await db.insert('room_assignment', {
-        'boarder_id': id,
-        'bed_id': bed.first['bed_id'],
-        'date_assigned': _date(now),
-        'status': 'active',
-      });
-      final previous = await db.insert('rent_charge', {
-        'boarder_id': id,
-        'billing_month': previousMonth,
-        'amount_due': rate,
-        'due_date': '$previousMonth-05',
-      });
-      await db.insert('payment', {
-        'charge_id': previous,
-        'amount': rate,
-        'payment_date': '$previousMonth-05',
-        'remarks': 'Paid in full',
-      });
-      final current = await db.insert('rent_charge', {
-        'boarder_id': id,
-        'billing_month': thisMonth,
-        'amount_due': rate,
-        'due_date': '$thisMonth-05',
-      });
-      final share = person[6] as double;
-      if (share > 0) {
-        await db.insert('payment', {
-          'charge_id': current,
-          'amount': rate * share,
-          'payment_date': _date(now),
-          'remarks': share == 1 ? 'Paid in full' : 'Partial payment',
-        });
-      }
-    }
-    await db.insert('complaint', {
-      'boarder_id': boarderIds[0],
-      'description': 'Leaking faucet in the bathroom.',
-      'date_reported': _date(now),
-      'status': 'Being handled',
-    });
-    await db.insert('complaint', {
-      'boarder_id': boarderIds[2],
-      'description': 'Wi-Fi signal is weak inside the room.',
-      'date_reported': _date(now),
-      'status': 'Unresolved',
-    });
   }
 
   Future<Map<String, Object?>?> authenticate(
@@ -475,9 +393,12 @@ class AppDatabase {
     });
   }
 
-  Future<List<Map<String, Object?>>> charges([String search = '']) async {
+  Future<List<Map<String, Object?>>> charges([
+    String search = '',
+    String statusFilter = 'All',
+  ]) async {
     final db = await database;
-    return db.rawQuery(
+    final rows = await db.rawQuery(
       '''
       SELECT c.charge_id, c.boarder_id, b.first_name || ' ' || b.last_name AS boarder_name,
         c.billing_month, c.amount_due, c.due_date, COALESCE(SUM(p.amount), 0) AS amount_paid
@@ -488,6 +409,32 @@ class AppDatabase {
     ''',
       ['%${search.trim()}%'],
     );
+    return rows.where((charge) {
+      final due = (charge['amount_due']! as num).toDouble();
+      final paid = (charge['amount_paid']! as num).toDouble();
+      if (statusFilter == 'Paid') return paid >= due;
+      if (statusFilter == 'Unpaid') return paid < due;
+      return true;
+    }).toList();
+  }
+
+  Future<void> ensureCurrentMonthCharges() async {
+    final db = await database;
+    final now = DateTime.now();
+    final month =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+    final dueDate = '$month-01';
+    await db.rawInsert(
+      '''
+      INSERT OR IGNORE INTO rent_charge (boarder_id, billing_month, amount_due, due_date)
+      SELECT a.boarder_id, ?, r.monthly_rate, ?
+      FROM room_assignment a
+      JOIN bed bd ON bd.bed_id = a.bed_id
+      JOIN room r ON r.room_id = bd.room_id
+      WHERE a.status = 'active'
+    ''',
+      [month, dueDate],
+    );
   }
 
   Future<int> addCharge(
@@ -496,7 +443,9 @@ class AppDatabase {
     double amount,
     String dueDate,
   ) async {
-    if (amount <= 0) throw Exception('Rent amount must be greater than zero.');
+    if (!amount.isFinite || amount <= 0) {
+      throw Exception('Rent amount must be a finite number greater than zero.');
+    }
     final db = await database;
     final duplicate = await db.query(
       'rent_charge',
@@ -512,6 +461,58 @@ class AppDatabase {
       'amount_due': amount,
       'due_date': dueDate,
     });
+  }
+
+  Future<void> updateCharge(int chargeId, double amount, String dueDate) async {
+    if (!amount.isFinite || amount <= 0) {
+      throw Exception('Rent amount must be a finite number greater than zero.');
+    }
+    final parsedDate = DateTime.tryParse(dueDate);
+    if (parsedDate == null || _date(parsedDate) != dueDate) {
+      throw Exception('Enter the due date in YYYY-MM-DD format.');
+    }
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT c.amount_due, COALESCE(SUM(p.amount), 0) AS amount_paid
+      FROM rent_charge c LEFT JOIN payment p ON p.charge_id = c.charge_id
+      WHERE c.charge_id = ? GROUP BY c.charge_id
+      ''',
+      [chargeId],
+    );
+    if (rows.isEmpty) throw Exception('Rent record was not found.');
+    final paid = (rows.first['amount_paid']! as num).toDouble();
+    if (amount < paid) {
+      throw Exception(
+        'Amount due cannot be less than the ₱${paid.toStringAsFixed(2)} already paid.',
+      );
+    }
+    await db.update(
+      'rent_charge',
+      {'amount_due': amount, 'due_date': dueDate},
+      where: 'charge_id = ?',
+      whereArgs: [chargeId],
+    );
+  }
+
+  Future<Map<String, double>> boarderRentSummary(int boarderId) async {
+    final rows = await (await database).rawQuery(
+      '''
+      SELECT COALESCE(SUM(amount_due), 0) AS total_due,
+        COALESCE(SUM(amount_paid), 0) AS total_paid
+      FROM (
+        SELECT c.charge_id, c.amount_due, COALESCE(SUM(p.amount), 0) AS amount_paid
+        FROM rent_charge c LEFT JOIN payment p ON p.charge_id = c.charge_id
+        WHERE c.boarder_id = ? GROUP BY c.charge_id
+      )
+      ''',
+      [boarderId],
+    );
+    final row = rows.first;
+    return {
+      'due': (row['total_due']! as num).toDouble(),
+      'paid': (row['total_paid']! as num).toDouble(),
+    };
   }
 
   Future<void> recordPayment(
@@ -554,15 +555,39 @@ class AppDatabase {
     );
   }
 
-  Future<List<Map<String, Object?>>> complaints([String search = '']) async {
+  Future<List<Map<String, Object?>>> complaints([
+    String search = '',
+    String statusFilter = 'All',
+  ]) async {
     final db = await database;
-    return db.rawQuery(
-      '''
+    final statusClause = statusFilter == 'All' ? '' : 'AND c.status = ?';
+    final args = statusFilter == 'All'
+        ? ['%${search.trim()}%']
+        : ['%${search.trim()}%', statusFilter];
+    return db.rawQuery('''
       SELECT c.complaint_id, c.boarder_id, b.first_name || ' ' || b.last_name AS boarder_name,
         c.description, c.date_reported, c.status
       FROM complaint c JOIN boarder b ON b.boarder_id = c.boarder_id
-      WHERE (b.first_name || ' ' || b.last_name || ' ' || c.description || ' ' || c.status) LIKE ?
+      WHERE c.status != 'Resolved'
+        AND (b.first_name || ' ' || b.last_name || ' ' || c.description || ' ' || c.status) LIKE ?
+        $statusClause
       ORDER BY c.date_reported DESC, c.complaint_id DESC
+    ''', args);
+  }
+
+  Future<List<Map<String, Object?>>> resolvedComplaints([
+    String search = '',
+  ]) async {
+    final db = await database;
+    return db.rawQuery(
+      '''
+      SELECT c.complaint_id, c.boarder_id,
+        b.first_name || ' ' || b.last_name AS boarder_name,
+        c.description, c.date_reported, c.resolved_at, c.status
+      FROM complaint c JOIN boarder b ON b.boarder_id = c.boarder_id
+      WHERE c.status = 'Resolved'
+        AND (b.first_name || ' ' || b.last_name || ' ' || c.description) LIKE ?
+      ORDER BY c.resolved_at DESC, c.complaint_id DESC
     ''',
       ['%${search.trim()}%'],
     );
@@ -584,9 +609,20 @@ class AppDatabase {
   Future<void> updateComplaint(int id, String status) async {
     await (await database).update(
       'complaint',
-      {'status': status},
+      {
+        'status': status,
+        'resolved_at': status == 'Resolved' ? _date(DateTime.now()) : null,
+      },
       where: 'complaint_id = ?',
       whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteComplaint(int id) async {
+    await (await database).delete(
+      'complaint',
+      where: 'complaint_id = ? AND status = ?',
+      whereArgs: [id, 'Resolved'],
     );
   }
 
@@ -622,7 +658,4 @@ class AppDatabase {
 
   static String _date(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-  static String _month(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}';
 }
