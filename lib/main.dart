@@ -8,7 +8,6 @@ const canvas = Color(0xFFFFEAF1);
 const rose = Color(0xFFD53E72);
 const roseDark = Color(0xFFA32653);
 const lilac = Color(0xFFDDECF7);
-const blue = Color(0xFF3478A5);
 const green = Color(0xFF668A3C);
 const amber = Color(0xFFC48A36);
 const red = Color(0xFFBB3D61);
@@ -31,8 +30,7 @@ class SalfarmyoApp extends StatelessWidget {
       colorScheme: ColorScheme.fromSeed(
         seedColor: roseDark,
         primary: roseDark,
-        secondary: blue,
-        surface: Colors.white,
+        surface: const Color.fromARGB(255, 255, 179, 203),
       ),
       fontFamily: 'sans-serif',
       appBarTheme: const AppBarTheme(
@@ -58,11 +56,15 @@ class SalfarmyoApp extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFF0C7D2)),
+          borderSide: const BorderSide(
+            color: Color.fromARGB(255, 249, 192, 213),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE6CDD7)),
+          borderSide: const BorderSide(
+            color: Color.fromARGB(255, 185, 108, 138),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -177,11 +179,11 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           Positioned(
-            top: -35,
-            right: -50,
+            top: -100,
+            right: -70,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(230, const Color(0xBFE6A0B8)),
+              child: _orb(250, const Color(0x44E96791)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   -8 + 20 * _ambientController.value,
@@ -192,26 +194,11 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           Positioned(
-            top: height * .4,
-            left: -42,
-            child: AnimatedBuilder(
-              animation: _ambientController,
-              child: _orb(130, const Color(0x88F7DCE4)),
-              builder: (_, child) => Transform.translate(
-                offset: Offset(
-                  8 * _ambientController.value,
-                  -6 + 10 * _ambientController.value,
-                ),
-                child: child,
-              ),
-            ),
-          ),
-          Positioned(
             bottom: -110,
             left: -90,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(290, const Color(0xCCEF91B3)),
+              child: _orb(290, const Color(0x44D53E72)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   12 * _ambientController.value,
@@ -352,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: FilledButton(
                                     onPressed: _busy ? null : _login,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: roseDark,
+                                      backgroundColor: rose,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
@@ -670,7 +657,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: 'Open beds',
                 value: stats['availableBeds'] ?? 0,
                 icon: Icons.bed_rounded,
-                tint: lilac,
+                tint: const Color(0xFFE5F0D9),
                 onTap: () => widget.onOpen(1),
               ),
               _StatCard(
@@ -994,7 +981,9 @@ class _BedPreview extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: occupied ? const Color(0xFFFBE3E9) : lilac,
+                        color: occupied
+                            ? const Color(0xFFFBE3E9)
+                            : const Color(0xFFE7F2F9),
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: Text(
@@ -1002,7 +991,9 @@ class _BedPreview extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: occupied ? roseDark : blue,
+                          color: occupied
+                              ? roseDark
+                              : const Color.fromARGB(255, 60, 72, 138),
                         ),
                       ),
                     );
@@ -1013,7 +1004,10 @@ class _BedPreview extends StatelessWidget {
                   children: [
                     _LegendDot(color: rose, label: 'Occupied'),
                     SizedBox(width: 16),
-                    _LegendDot(color: blue, label: 'Available'),
+                    _LegendDot(
+                      color: Color.fromARGB(255, 60, 72, 138),
+                      label: 'Available',
+                    ),
                   ],
                 ),
               ],
@@ -1180,7 +1174,7 @@ class _BoardersPageState extends State<BoardersPage> {
           padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
           child: FloatingActionButton.extended(
             onPressed: () => _edit(),
-            backgroundColor: blue,
+            backgroundColor: rose,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('Add boarder'),
@@ -1801,7 +1795,10 @@ class _RoomsPageState extends State<RoomsPage> {
           const SizedBox(height: 12),
           const Row(
             children: [
-              _LegendDot(color: blue, label: 'Available'),
+              _LegendDot(
+                color: Color.fromARGB(255, 60, 72, 138),
+                label: 'Available',
+              ),
               SizedBox(width: 16),
               _LegendDot(color: rose, label: 'Occupied'),
             ],
@@ -1810,22 +1807,16 @@ class _RoomsPageState extends State<RoomsPage> {
           for (final building in buildings) ...[
             _SectionTitle(
               'Building $building',
-              subtitle: building == 1
-                  ? 'Shared bedspaces · ₱1,800–₱2,300 per boarder / month'
-                  : 'Solo rooms · ₱5,000 per boarder / month',
+              subtitle: building == 1 ? 'Double-deck rooms' : 'Private rooms',
             ),
             const SizedBox(height: 10),
-            for (final floor in _floorsOf(building)) ...[
-              _SectionTitle(floor == 1 ? 'First floor' : 'Second floor'),
-              const SizedBox(height: 8),
-              ..._roomsOf(building, floor).entries.map(
-                (entry) => _RoomCard(
-                  room: entry.key,
-                  beds: entry.value,
-                  onBedTap: _assign,
-                ),
+            ..._roomsOf(building).entries.map(
+              (entry) => _RoomCard(
+                room: entry.key,
+                beds: entry.value,
+                onBedTap: _assign,
               ),
-            ],
+            ),
             const SizedBox(height: 16),
           ],
         ],
@@ -1833,20 +1824,9 @@ class _RoomsPageState extends State<RoomsPage> {
     );
   }
 
-  List<int> _floorsOf(Object? building) => _beds
-      .where((bed) => bed['building'] == building)
-      .map((bed) => bed['floor']! as int)
-      .toSet()
-      .toList();
-
-  Map<String, List<Map<String, Object?>>> _roomsOf(
-    Object? building,
-    int floor,
-  ) {
+  Map<String, List<Map<String, Object?>>> _roomsOf(Object? building) {
     final result = <String, List<Map<String, Object?>>>{};
-    for (final bed in _beds.where(
-      (row) => row['building'] == building && row['floor'] == floor,
-    )) {
+    for (final bed in _beds.where((row) => row['building'] == building)) {
       (result['${bed['room_number']}'] ??= []).add(bed);
     }
     return result;
@@ -1866,13 +1846,6 @@ class _RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final occupiedCount = beds.where((bed) => bed['boarder_id'] != null).length;
-    final layout = beds.first['layout']! as String;
-    final monthlyRate = (beds.first['monthly_rate']! as num).toInt();
-    final layoutName = switch (layout) {
-      'twin' => 'Two-bed room',
-      'solo' => 'Private solo room',
-      _ => 'Double-deck room',
-    };
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
@@ -1905,14 +1878,6 @@ class _RoomCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 26),
-              child: Text(
-                '$layoutName · ₱$monthlyRate per boarder / month',
-                style: const TextStyle(color: muted, fontSize: 12),
-              ),
-            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1929,14 +1894,18 @@ class _RoomCard extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: occupied ? const Color(0xFFFBE4E9) : lilac,
+                      color: occupied
+                          ? const Color(0xFFFBE4E9)
+                          : const Color(0xFFE7F2F9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       children: [
                         Icon(
                           Icons.bed_rounded,
-                          color: occupied ? roseDark : blue,
+                          color: occupied
+                              ? roseDark
+                              : const Color.fromARGB(255, 60, 72, 138),
                           size: 18,
                         ),
                         const SizedBox(height: 3),
@@ -1945,7 +1914,9 @@ class _RoomCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: occupied ? roseDark : blue,
+                            color: occupied
+                                ? roseDark
+                                : const Color.fromARGB(255, 60, 72, 138),
                           ),
                         ),
                         Text(
@@ -2248,9 +2219,9 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Record payment'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: blue,
+                                    foregroundColor: roseDark,
                                     side: const BorderSide(
-                                      color: Color(0xFFC8DDEB),
+                                      color: Color(0xFFF0C7D2),
                                     ),
                                   ),
                                 ),
@@ -2827,7 +2798,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
             child: FloatingActionButton.extended(
               onPressed: _add,
-              backgroundColor: blue,
+              backgroundColor: const Color.fromARGB(255, 62, 77, 213),
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_comment_rounded),
               label: const Text('New complaint'),
