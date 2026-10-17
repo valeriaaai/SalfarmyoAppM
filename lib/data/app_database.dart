@@ -6,6 +6,74 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+class _RoomDefinition {
+  const _RoomDefinition({
+    required this.building,
+    required this.number,
+    required this.floor,
+    required this.layout,
+    required this.roomType,
+    required this.monthlyRate,
+    required this.beds,
+  });
+
+  final int building;
+  final String number;
+  final int floor;
+  final String layout;
+  final String roomType;
+  final double monthlyRate;
+  final List<List<String>> beds;
+}
+
+List<_RoomDefinition> _roomDefinitions() {
+  const twinBeds = [
+    ['1', 'Bed 1'],
+    ['2', 'Bed 2'],
+  ];
+  const doubleDeckBeds = [
+    ['1T', 'Upper bunk 1'],
+    ['1B', 'Lower bunk 1'],
+    ['2T', 'Upper bunk 2'],
+    ['2B', 'Lower bunk 2'],
+  ];
+  const soloBed = [
+    ['SOLO', 'Private'],
+  ];
+  return [
+    for (var number = 101; number <= 102; number++)
+      _RoomDefinition(
+        building: 1,
+        number: '$number',
+        floor: 1,
+        layout: 'twin',
+        roomType: 'double_deck',
+        monthlyRate: 2300,
+        beds: twinBeds,
+      ),
+    for (var number = 103; number <= 108; number++)
+      _RoomDefinition(
+        building: 1,
+        number: '$number',
+        floor: number < 105 ? 1 : 2,
+        layout: 'double_deck',
+        roomType: 'double_deck',
+        monthlyRate: 1800,
+        beds: doubleDeckBeds,
+      ),
+    for (var number = 201; number <= 208; number++)
+      _RoomDefinition(
+        building: 2,
+        number: '$number',
+        floor: number < 205 ? 1 : 2,
+        layout: 'solo',
+        roomType: 'solo',
+        monthlyRate: 5000,
+        beds: soloBed,
+      ),
+  ];
+}
+
 class AppDatabase {
   AppDatabase._();
 
@@ -22,7 +90,7 @@ class AppDatabase {
     final root = await getDatabasesPath();
     _database = await openDatabase(
       p.join(root, 'salfarmyo.db'),
-      version: 3,
+      version: 4,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await _createTables(db);
@@ -65,6 +133,21 @@ class AppDatabase {
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE complaint ADD COLUMN resolved_at TEXT');
         }
+        if (oldVersion < 4) {
+          await db.execute(
+            'ALTER TABLE room ADD COLUMN floor INTEGER NOT NULL DEFAULT 1',
+          );
+          await db.execute(
+            "ALTER TABLE room ADD COLUMN layout TEXT NOT NULL DEFAULT 'double_deck'",
+          );
+          await db.execute(
+            'ALTER TABLE room ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+          );
+          await db.execute(
+            'ALTER TABLE bed ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+          );
+          await _migrateRoomLayout(db);
+        }
       },
     );
     return _database!;
@@ -96,7 +179,10 @@ class AppDatabase {
         building INTEGER NOT NULL,
         room_number TEXT NOT NULL UNIQUE,
         room_type TEXT NOT NULL CHECK (room_type IN ('double_deck', 'solo')),
-        monthly_rate REAL NOT NULL
+        monthly_rate REAL NOT NULL,
+        floor INTEGER NOT NULL,
+        layout TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1
       )
     ''');
     await db.execute('''
@@ -105,6 +191,7 @@ class AppDatabase {
         room_id INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE,
         code TEXT NOT NULL,
         position TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
         UNIQUE (room_id, code)
       )
     ''');
@@ -165,39 +252,160 @@ class AppDatabase {
       'salt': salt,
       'full_name': 'Lydia Diaz',
     });
-    const rate = 3500.0;
-    for (final room in ['101', '102', '103', '104', '105']) {
-      final id = await db.insert('room', {
-        'building': 1,
-        'room_number': room,
-        'room_type': 'double_deck',
-        'monthly_rate': rate,
+    for (final room in _roomDefinitions()) {
+      final roomId = await db.insert('room', {
+        'building': room.building,
+        'room_number': room.number,
+        'room_type': room.roomType,
+        'monthly_rate': room.monthlyRate,
+        'floor': room.floor,
+        'layout': room.layout,
       });
-      for (final bed in [
-        ['1T', 'Top'],
-        ['1B', 'Bottom'],
-        ['1AT', 'Top'],
-        ['1AB', 'Bottom'],
-      ]) {
+      for (final bed in room.beds) {
         await db.insert('bed', {
-          'room_id': id,
+          'room_id': roomId,
           'code': bed[0],
           'position': bed[1],
         });
       }
     }
-    for (var number = 201; number <= 216; number++) {
-      final id = await db.insert('room', {
-        'building': 2,
-        'room_number': '$number',
-        'room_type': 'solo',
-        'monthly_rate': rate,
+  }
+
+  Future<void> _migrateRoomLayout(Database db) async {
+    final assignments = await db.rawQuery('''
+      SELECT a.assignment_id, a.boarder_id, a.bed_id, a.date_assigned,
+        r.building
+      FROM room_assignment a
+      JOIN bed bd ON bd.bed_id = a.bed_id
+      JOIN room r ON r.room_id = bd.room_id
+      WHERE a.status = 'active'
+      ORDER BY a.assignment_id
+    ''');
+    final layouts = _roomDefinitions();
+    final capacities = <int, int>{};
+    for (final room in layouts) {
+      capacities.update(
+        room.building,
+        (count) => count + room.beds.length,
+        ifAbsent: () => room.beds.length,
+      );
+    }
+    for (final building in [1, 2]) {
+      final occupied = assignments
+          .where((assignment) => assignment['building'] == building)
+          .length;
+      final capacity = capacities[building]!;
+      if (occupied > capacity) {
+        throw StateError(
+          'Cannot update the bedspace layout: Building $building has '
+          '$occupied assigned boarders but the new layout has capacity '
+          'for $capacity. Move some boarders before updating.',
+        );
+      }
+    }
+
+    final oldBedsByBuilding = <int, List<Map<String, Object?>>>{};
+    for (final building in [1, 2]) {
+      oldBedsByBuilding[building] = await db.rawQuery(
+        'SELECT bd.bed_id FROM bed bd JOIN room r ON r.room_id = bd.room_id '
+        'WHERE r.building = ? ORDER BY bd.bed_id',
+        [building],
+      );
+    }
+    for (final beds in oldBedsByBuilding.values) {
+      for (final bed in beds) {
+        final bedId = bed['bed_id']! as int;
+        await db.update(
+          'bed',
+          {'code': '__legacy_$bedId'},
+          where: 'bed_id = ?',
+          whereArgs: [bedId],
+        );
+      }
+    }
+    await db.update('room', {'is_active': 0});
+    await db.update('bed', {'is_active': 0});
+
+    final desiredBedsByBuilding = <int, List<int>>{1: [], 2: []};
+    final usedBedCounts = <int, int>{1: 0, 2: 0};
+    for (final definition in layouts) {
+      final existingRooms = await db.query(
+        'room',
+        columns: ['room_id'],
+        where: 'room_number = ?',
+        whereArgs: [definition.number],
+      );
+      final values = {
+        'building': definition.building,
+        'room_type': definition.roomType,
+        'monthly_rate': definition.monthlyRate,
+        'floor': definition.floor,
+        'layout': definition.layout,
+        'is_active': 1,
+      };
+      final roomId = existingRooms.isEmpty
+          ? await db.insert('room', {
+              ...values,
+              'room_number': definition.number,
+            })
+          : existingRooms.first['room_id']! as int;
+      if (existingRooms.isNotEmpty) {
+        await db.update(
+          'room',
+          values,
+          where: 'room_id = ?',
+          whereArgs: [roomId],
+        );
+      }
+
+      for (final bed in definition.beds) {
+        final bedIndex = usedBedCounts[definition.building]!;
+        final oldBeds = oldBedsByBuilding[definition.building]!;
+        final bedValues = {
+          'room_id': roomId,
+          'code': bed[0],
+          'position': bed[1],
+          'is_active': 1,
+        };
+        final bedId = bedIndex < oldBeds.length
+            ? oldBeds[bedIndex]['bed_id']! as int
+            : await db.insert('bed', bedValues);
+        if (bedIndex < oldBeds.length) {
+          await db.update(
+            'bed',
+            bedValues,
+            where: 'bed_id = ?',
+            whereArgs: [bedId],
+          );
+        }
+        desiredBedsByBuilding[definition.building]!.add(bedId);
+        usedBedCounts[definition.building] = bedIndex + 1;
+      }
+    }
+
+    final migratedAssignments = <Map<String, Object?>>[];
+    for (final assignment in assignments) {
+      final building = assignment['building']! as int;
+      final desiredBeds = desiredBedsByBuilding[building]!;
+      final oldBedId = assignment['bed_id']! as int;
+      final targetBedId = desiredBeds.remove(oldBedId)
+          ? oldBedId
+          : desiredBeds.removeAt(0);
+      await db.update(
+        'room_assignment',
+        {'status': 'ended'},
+        where: 'assignment_id = ?',
+        whereArgs: [assignment['assignment_id']],
+      );
+      migratedAssignments.add({
+        'boarder_id': assignment['boarder_id'],
+        'bed_id': targetBedId,
+        'date_assigned': assignment['date_assigned'],
+        'status': 'active',
       });
-      await db.insert('bed', {
-        'room_id': id,
-        'code': 'SOLO',
-        'position': 'Private',
-      });
+    }
+    for (final assignment in migratedAssignments) {
+      await db.insert('room_assignment', assignment);
     }
   }
 
@@ -225,12 +433,15 @@ class AppDatabase {
     final occupied = Sqflite.firstIntValue(
       await db.rawQuery(
         "SELECT COUNT(DISTINCT bd.room_id) FROM room_assignment a "
-        "JOIN bed bd ON bd.bed_id = a.bed_id WHERE a.status = 'active'",
+        "JOIN bed bd ON bd.bed_id = a.bed_id "
+        "JOIN room r ON r.room_id = bd.room_id "
+        "WHERE a.status = 'active' AND bd.is_active = 1 AND r.is_active = 1",
       ),
     )!;
     final available = Sqflite.firstIntValue(
       await db.rawQuery(
-        "SELECT COUNT(*) FROM bed WHERE bed_id NOT IN "
+        "SELECT COUNT(*) FROM bed bd JOIN room r ON r.room_id = bd.room_id "
+        "WHERE bd.is_active = 1 AND r.is_active = 1 AND bd.bed_id NOT IN "
         "(SELECT bed_id FROM room_assignment WHERE status = 'active')",
       ),
     )!;
@@ -360,12 +571,14 @@ class AppDatabase {
   Future<List<Map<String, Object?>>> beds() async {
     final db = await database;
     return db.rawQuery('''
-      SELECT bd.bed_id, bd.code, bd.position, r.room_number, r.building, r.monthly_rate,
+      SELECT bd.bed_id, bd.code, bd.position, r.room_number, r.building, r.floor,
+        r.layout, r.monthly_rate,
         a.boarder_id, b.first_name || ' ' || b.last_name AS occupant
       FROM bed bd JOIN room r ON r.room_id = bd.room_id
       LEFT JOIN room_assignment a ON a.bed_id = bd.bed_id AND a.status = 'active'
       LEFT JOIN boarder b ON b.boarder_id = a.boarder_id
-      ORDER BY r.building, r.room_number, bd.bed_id
+      WHERE bd.is_active = 1 AND r.is_active = 1
+      ORDER BY r.building, r.floor, r.room_number, bd.bed_id
     ''');
   }
 

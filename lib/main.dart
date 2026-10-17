@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'data/app_database.dart';
 
-const ink = Color(0xFF282333);
-const muted = Color(0xFF797482);
-const canvas = Color(0xFFFFF8F7);
-const rose = Color(0xFFE75D83);
-const roseDark = Color(0xFFB93D68);
-const lilac = Color(0xFFE9E4F7);
-const green = Color(0xFF31966D);
-const amber = Color(0xFFCF8A30);
-const red = Color(0xFFC75358);
+const ink = Color(0xFF3C2634);
+const muted = Color(0xFF866F7A);
+const canvas = Color(0xFFFFEAF1);
+const rose = Color(0xFFD53E72);
+const roseDark = Color(0xFFA32653);
+const lilac = Color(0xFFDDECF7);
+const blue = Color(0xFF3478A5);
+const green = Color(0xFF668A3C);
+const amber = Color(0xFFC48A36);
+const red = Color(0xFFBB3D61);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,12 @@ class SalfarmyoApp extends StatelessWidget {
     theme: ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: canvas,
-      colorScheme: ColorScheme.fromSeed(seedColor: rose, surface: canvas),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: roseDark,
+        primary: roseDark,
+        secondary: blue,
+        surface: Colors.white,
+      ),
       fontFamily: 'sans-serif',
       appBarTheme: const AppBarTheme(
         backgroundColor: canvas,
@@ -39,6 +45,10 @@ class SalfarmyoApp extends StatelessWidget {
           color: ink,
         ),
       ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: Color(0xFFFFDCE7),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
@@ -48,11 +58,11 @@ class SalfarmyoApp extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEDE7E9)),
+          borderSide: const BorderSide(color: Color(0xFFF0C7D2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEDE7E9)),
+          borderSide: const BorderSide(color: Color(0xFFE6CDD7)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -159,19 +169,19 @@ class _LoginScreenState extends State<LoginScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFF9DCE5),
-                  Color(0xFFFFF7F2),
-                  Color(0xFFEDE7F7),
+                  Color(0xFFFFE0E9),
+                  Color(0xFFFFF4F6),
+                  Color(0xFFFFEAF1),
                 ],
               ),
             ),
           ),
           Positioned(
-            top: -100,
-            right: -70,
+            top: -35,
+            right: -50,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(250, const Color(0x44F17B9F)),
+              child: _orb(230, const Color(0xBFE6A0B8)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   -8 + 20 * _ambientController.value,
@@ -182,11 +192,26 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           Positioned(
+            top: height * .4,
+            left: -42,
+            child: AnimatedBuilder(
+              animation: _ambientController,
+              child: _orb(130, const Color(0x88F7DCE4)),
+              builder: (_, child) => Transform.translate(
+                offset: Offset(
+                  8 * _ambientController.value,
+                  -6 + 10 * _ambientController.value,
+                ),
+                child: child,
+              ),
+            ),
+          ),
+          Positioned(
             bottom: -110,
             left: -90,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(290, const Color(0x448A79C1)),
+              child: _orb(290, const Color(0xCCEF91B3)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   12 * _ambientController.value,
@@ -226,45 +251,12 @@ class _LoginScreenState extends State<LoginScreen>
                           opacity: _fade,
                           child: Column(
                             children: [
-                              Container(
-                                width: 78,
-                                height: 78,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .78),
-                                  shape: BoxShape.circle,
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x1E70374D),
-                                      blurRadius: 25,
-                                      offset: Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.home_work_rounded,
-                                  color: rose,
-                                  size: 39,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              const Text(
-                                'SALFARMYO',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  letterSpacing: 3,
-                                  fontWeight: FontWeight.w900,
-                                  color: ink,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              const Text(
-                                'DORMITORY MANAGEMENT',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  letterSpacing: 2,
-                                  fontWeight: FontWeight.w700,
-                                  color: muted,
-                                ),
+                              Image.asset(
+                                'assets/salfarmyoooo.png',
+                                width: 250,
+                                height: 84,
+                                fit: BoxFit.contain,
+                                semanticLabel: 'Salfarmyo Women’s Dormitory',
                               ),
                               SizedBox(height: height < 650 ? 22 : 38),
                             ],
@@ -360,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: FilledButton(
                                     onPressed: _busy ? null : _login,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: rose,
+                                      backgroundColor: roseDark,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
@@ -546,6 +538,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   Map<String, int>? _summary;
   List<Map<String, Object?>> _people = [];
+  List<Map<String, Object?>> _charges = [];
   bool _loading = true;
 
   @override
@@ -563,11 +556,16 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _load() async {
     try {
       final db = AppDatabase.instance;
-      final results = await Future.wait([db.summary(), db.boarders()]);
+      final results = await Future.wait([
+        db.summary(),
+        db.boarders(),
+        db.charges(),
+      ]);
       if (!mounted) return;
       setState(() {
         _summary = results[0] as Map<String, int>;
         _people = results[1] as List<Map<String, Object?>>;
+        _charges = results[2] as List<Map<String, Object?>>;
         _loading = false;
       });
     } catch (error) {
@@ -592,11 +590,11 @@ class _DashboardPageState extends State<DashboardPage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               gradient: const LinearGradient(
-                colors: [Color(0xFFE96688), Color(0xFFB67DC5)],
+                colors: [Color(0xFFD94475), Color(0xFFA32653)],
               ),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x338C3453),
+                  color: Color(0x33441F31),
                   blurRadius: 20,
                   offset: Offset(0, 9),
                 ),
@@ -641,6 +639,8 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          _DashboardRentCard(charges: _charges, onTap: () => widget.onOpen(3)),
           const SizedBox(height: 20),
           const _SectionTitle('Overview', subtitle: 'Your property today'),
           const SizedBox(height: 12),
@@ -656,28 +656,28 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: 'Boarders',
                 value: stats['boarders'] ?? 0,
                 icon: Icons.people_alt_rounded,
-                tint: const Color(0xFFE8E2F5),
+                tint: const Color(0xFFDDECF7),
                 onTap: () => widget.onOpen(2),
               ),
               _StatCard(
                 label: 'Occupied rooms',
                 value: stats['occupiedRooms'] ?? 0,
                 icon: Icons.meeting_room_rounded,
-                tint: const Color(0xFFFBE3E9),
+                tint: const Color(0xFFFFE0E9),
                 onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Open beds',
                 value: stats['availableBeds'] ?? 0,
                 icon: Icons.bed_rounded,
-                tint: const Color(0xFFE1F1E9),
+                tint: lilac,
                 onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Unpaid rent',
                 value: stats['unpaid'] ?? 0,
                 icon: Icons.receipt_long_rounded,
-                tint: const Color(0xFFFFEFD9),
+                tint: const Color(0xFFFFECCD),
                 onTap: () => widget.onOpen(3),
               ),
             ],
@@ -741,6 +741,144 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+class _DashboardRentCard extends StatelessWidget {
+  const _DashboardRentCard({required this.charges, required this.onTap});
+
+  final List<Map<String, Object?>> charges;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final month = _currentMonth();
+    final monthCharges = charges
+        .where((charge) => charge['billing_month'] == month)
+        .toList();
+    final due = monthCharges.fold<double>(
+      0,
+      (total, charge) => total + (charge['amount_due']! as num).toDouble(),
+    );
+    final paid = monthCharges.fold<double>(
+      0,
+      (total, charge) => total + (charge['amount_paid']! as num).toDouble(),
+    );
+    final balance = (due - paid).clamp(0, double.infinity).toDouble();
+    final paidCount = monthCharges.where((charge) {
+      final amountDue = (charge['amount_due']! as num).toDouble();
+      final amountPaid = (charge['amount_paid']! as num).toDouble();
+      return amountPaid >= amountDue;
+    }).length;
+    final progress = due == 0 ? 0.0 : (paid / due).clamp(0, 1).toDouble();
+    final monthDate = DateTime.parse('$month-01');
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    return Material(
+      color: roseDark,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${monthNames[monthDate.month - 1]} rent',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View rent',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 7),
+              Text(
+                '₱${paid.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  height: 1.05,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'collected of ₱${due.toStringAsFixed(2)}',
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 5,
+                  backgroundColor: Colors.white30,
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(height: 7),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '$paidCount of ${monthCharges.length} paid',
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                  Text(
+                    '₱${balance.toStringAsFixed(2)} pending',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
@@ -782,7 +920,7 @@ class _StatCard extends StatelessWidget {
                 ),
                 const Icon(
                   Icons.arrow_outward_rounded,
-                  color: Color(0xFFB9B4BF),
+                  color: Color(0xFFB8A4AE),
                   size: 17,
                 ),
               ],
@@ -856,9 +994,7 @@ class _BedPreview extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: occupied
-                            ? const Color(0xFFFBE3E9)
-                            : const Color(0xFFE6F3EC),
+                        color: occupied ? const Color(0xFFFBE3E9) : lilac,
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: Text(
@@ -866,7 +1002,7 @@ class _BedPreview extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: occupied ? roseDark : green,
+                          color: occupied ? roseDark : blue,
                         ),
                       ),
                     );
@@ -877,7 +1013,7 @@ class _BedPreview extends StatelessWidget {
                   children: [
                     _LegendDot(color: rose, label: 'Occupied'),
                     SizedBox(width: 16),
-                    _LegendDot(color: green, label: 'Available'),
+                    _LegendDot(color: blue, label: 'Available'),
                   ],
                 ),
               ],
@@ -1044,7 +1180,7 @@ class _BoardersPageState extends State<BoardersPage> {
           padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
           child: FloatingActionButton.extended(
             onPressed: () => _edit(),
-            backgroundColor: rose,
+            backgroundColor: blue,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('Add boarder'),
@@ -1665,7 +1801,7 @@ class _RoomsPageState extends State<RoomsPage> {
           const SizedBox(height: 12),
           const Row(
             children: [
-              _LegendDot(color: green, label: 'Available'),
+              _LegendDot(color: blue, label: 'Available'),
               SizedBox(width: 16),
               _LegendDot(color: rose, label: 'Occupied'),
             ],
@@ -1674,16 +1810,22 @@ class _RoomsPageState extends State<RoomsPage> {
           for (final building in buildings) ...[
             _SectionTitle(
               'Building $building',
-              subtitle: building == 1 ? 'Double-deck rooms' : 'Private rooms',
+              subtitle: building == 1
+                  ? 'Shared bedspaces · ₱1,800–₱2,300 per boarder / month'
+                  : 'Solo rooms · ₱5,000 per boarder / month',
             ),
             const SizedBox(height: 10),
-            ..._roomsOf(building).entries.map(
-              (entry) => _RoomCard(
-                room: entry.key,
-                beds: entry.value,
-                onBedTap: _assign,
+            for (final floor in _floorsOf(building)) ...[
+              _SectionTitle(floor == 1 ? 'First floor' : 'Second floor'),
+              const SizedBox(height: 8),
+              ..._roomsOf(building, floor).entries.map(
+                (entry) => _RoomCard(
+                  room: entry.key,
+                  beds: entry.value,
+                  onBedTap: _assign,
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 16),
           ],
         ],
@@ -1691,9 +1833,20 @@ class _RoomsPageState extends State<RoomsPage> {
     );
   }
 
-  Map<String, List<Map<String, Object?>>> _roomsOf(Object? building) {
+  List<int> _floorsOf(Object? building) => _beds
+      .where((bed) => bed['building'] == building)
+      .map((bed) => bed['floor']! as int)
+      .toSet()
+      .toList();
+
+  Map<String, List<Map<String, Object?>>> _roomsOf(
+    Object? building,
+    int floor,
+  ) {
     final result = <String, List<Map<String, Object?>>>{};
-    for (final bed in _beds.where((row) => row['building'] == building)) {
+    for (final bed in _beds.where(
+      (row) => row['building'] == building && row['floor'] == floor,
+    )) {
       (result['${bed['room_number']}'] ??= []).add(bed);
     }
     return result;
@@ -1713,6 +1866,13 @@ class _RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final occupiedCount = beds.where((bed) => bed['boarder_id'] != null).length;
+    final layout = beds.first['layout']! as String;
+    final monthlyRate = (beds.first['monthly_rate']! as num).toInt();
+    final layoutName = switch (layout) {
+      'twin' => 'Two-bed room',
+      'solo' => 'Private solo room',
+      _ => 'Double-deck room',
+    };
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
@@ -1745,6 +1905,14 @@ class _RoomCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 26),
+              child: Text(
+                '$layoutName · ₱$monthlyRate per boarder / month',
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1761,16 +1929,14 @@ class _RoomCard extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: occupied
-                          ? const Color(0xFFFBE4E9)
-                          : const Color(0xFFE4F3EB),
+                      color: occupied ? const Color(0xFFFBE4E9) : lilac,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       children: [
                         Icon(
                           Icons.bed_rounded,
-                          color: occupied ? roseDark : green,
+                          color: occupied ? roseDark : blue,
                           size: 18,
                         ),
                         const SizedBox(height: 3),
@@ -1779,7 +1945,7 @@ class _RoomCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: occupied ? roseDark : green,
+                            color: occupied ? roseDark : blue,
                           ),
                         ),
                         Text(
@@ -2082,9 +2248,9 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Record payment'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: roseDark,
+                                    foregroundColor: blue,
                                     side: const BorderSide(
-                                      color: Color(0xFFF0C7D2),
+                                      color: Color(0xFFC8DDEB),
                                     ),
                                   ),
                                 ),
@@ -2661,7 +2827,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
             child: FloatingActionButton.extended(
               onPressed: _add,
-              backgroundColor: rose,
+              backgroundColor: blue,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_comment_rounded),
               label: const Text('New complaint'),
@@ -2833,7 +2999,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 42, color: const Color(0xFFC9C3CF)),
+          Icon(icon, size: 42, color: const Color(0xFFC9B8C0)),
           const SizedBox(height: 10),
           Text(
             text,

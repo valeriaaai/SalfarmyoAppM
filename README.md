@@ -9,7 +9,11 @@ need an internet connection, a server, or a separate SQL application.
 - Animated login with floating background shapes and an entrance animation.
 - Dashboard with boarder, room, available-bed, unpaid-rent, and complaint counts.
 - Boarder directory with search, add/edit/delete, a rent summary, and payment history.
-- Room/bedspace map; tap an open bed to assign an existing or new boarder.
+- Room/bedspace map grouped by building and floor; tap an open bed to assign an
+  existing or new boarder. Building 1 has 2 twin rooms and 2 double-deck rooms
+  on the first floor, plus 4 double-deck rooms on the second floor. Twin beds
+  cost ₱2,300 per boarder/month and double-deck beds cost ₱1,800. Building 2
+  has 8 solo rooms across 2 floors at ₱5,000 per boarder/month.
 - Rent ledger with month and Paid/Unpaid filters, automatically created monthly
   charges for occupied beds, editable rent records, payment recording, and
   per-boarder payment history. Each new month starts with a separate unpaid
@@ -21,8 +25,10 @@ need an internet connection, a server, or a separate SQL application.
 ## First run data
 
 The first launch creates a private `salfarmyo.db` in Android's app data folder,
-then creates the owner and room/bed layout. Boarders, rent, payments, and
-complaints start empty; records you add are saved in this local database.
+then creates the owner and the configured room/bed layout. Existing local
+databases are migrated to the updated layout while retaining boarder and rent
+records. On a new install, boarders, rent, payments, and complaints start
+empty; records you add are saved in this local database.
 Starter login:
 
 ```text
