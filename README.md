@@ -11,10 +11,11 @@ need an internet connection, a server, or a separate SQL application.
 - Dashboard with boarder, room, available-bed, unpaid-rent, and complaint counts.
 - Boarder directory with search, add/edit/delete, a rent summary, and payment history.
 - Room/bedspace map grouped by building and floor; tap an open bed to assign an
-  existing or new boarder. Building 1 has 2 twin rooms and 2 double-deck rooms
-  on the first floor, plus 4 double-deck rooms on the second floor. Twin beds
-  cost ₱2,300 per boarder/month and double-deck beds cost ₱1,800. Building 2
-  has 8 solo rooms across 2 floors at ₱5,000 per boarder/month.
+  existing or new boarder. Each building has 4 rooms per floor. Building 1 has
+  2 twin rooms with 2 beds each at ₱2,300 per boarder/month, and 6 bunk rooms
+  with 4 beds each at ₱1,800 per boarder/month. Building 2 has 8 solo rooms
+  with 1 bed each at ₱5,000 per boarder/month. Rent charges use the assigned
+  room's per-boarder rate.
 - Rent ledger with month and Paid/Unpaid filters, automatically created monthly
   charges for occupied beds, editable rent records, payment recording, and
   per-boarder payment history. Each new month starts with a separate unpaid

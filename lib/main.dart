@@ -1,26 +1,28 @@
-// Flutter app entry point and UI pages for login, dashboard, and dormitory features.
 import 'package:flutter/material.dart';
 
 import 'data/app_database.dart';
 
-const ink = Color(0xFF3C2634);
+// Shared colors used throughout the app's pages and controls.
+const ink = Color(0xFF462836);
 const muted = Color(0xFF866F7A);
 const canvas = Color(0xFFFFEAF1);
 const rose = Color(0xFFD53E72);
-const roseDark = Color(0xFFA42753);
+const roseDark = Color(0xFFA32653);
 const blue = Color(0xFF3478A5);
-const lilac = Color(0xFFDDECF7);
-const green = Color(0xFF668A3C);
-const amber = Color(0xFFC48A36);
-const red = Color(0xFFBB3D61);
+const blueDark = Color(0xFF245F86);
+const paleRose = Color(0xFFFFE0E9);
+const paleBlue = Color(0xFFDDECF7);
+const occupiedPink = Color(0xFFF5B3CA);
+const success = Color(0xFF668A3C);
+const attention = Color(0xFFC48A36);
+const danger = roseDark;
 
-// App startup.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const SalfarmyoApp());
 }
 
-// Application theme and root widget.
+// App startup and the shared Material theme.
 class SalfarmyoApp extends StatelessWidget {
   const SalfarmyoApp({super.key});
 
@@ -34,7 +36,7 @@ class SalfarmyoApp extends StatelessWidget {
       colorScheme: ColorScheme.fromSeed(
         seedColor: roseDark,
         primary: roseDark,
-        surface: const Color.fromARGB(255, 255, 179, 203),
+        surface: Colors.white,
       ),
       fontFamily: 'sans-serif',
       appBarTheme: const AppBarTheme(
@@ -49,7 +51,7 @@ class SalfarmyoApp extends StatelessWidget {
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: Color(0xFFFFDCE7),
+        indicatorColor: paleRose,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -60,15 +62,11 @@ class SalfarmyoApp extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color.fromARGB(255, 249, 192, 213),
-          ),
+          borderSide: const BorderSide(color: occupiedPink),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color.fromARGB(255, 185, 108, 138),
-          ),
+          borderSide: const BorderSide(color: rose),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -80,7 +78,8 @@ class SalfarmyoApp extends StatelessWidget {
   );
 }
 
-// Login page.
+//LOGIN PAGE
+// Login screen: entrance animation, form, and local owner authentication.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -175,11 +174,7 @@ class _LoginScreenState extends State<LoginScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFFFE0E9),
-                  Color(0xFFFFF4F6),
-                  Color(0xFFFFEAF1),
-                ],
+                colors: [paleRose, Colors.white, canvas],
               ),
             ),
           ),
@@ -188,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
             right: -70,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(250, const Color(0x44E96791)),
+              child: _orb(250, rose.withValues(alpha: .27)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   -8 + 20 * _ambientController.value,
@@ -203,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen>
             left: -90,
             child: AnimatedBuilder(
               animation: _ambientController,
-              child: _orb(290, const Color(0x44D53E72)),
+              child: _orb(290, rose.withValues(alpha: .27)),
               builder: (_, child) => Transform.translate(
                 offset: Offset(
                   12 * _ambientController.value,
@@ -332,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   Text(
                                     _error!,
                                     style: const TextStyle(
-                                      color: red,
+                                      color: danger,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -344,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: FilledButton(
                                     onPressed: _busy ? null : _login,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: roseDark,
+                                      backgroundColor: rose,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
@@ -417,7 +412,7 @@ class _FieldLabel extends StatelessWidget {
   );
 }
 
-// Main navigation shell for the dashboard and feature pages.
+// Main navigation shell: switches between the five management pages.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.adminName});
   final String adminName;
@@ -511,7 +506,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _go(int index) => setState(() => _index = index);
 }
 
-// Dashboard page and its summary, rent, and room preview widgets.
+// DASHBOARD PAGE
+// Dashboard: summary counts, rent overview, and shortcuts to other pages.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
@@ -583,9 +579,7 @@ class _DashboardPageState extends State<DashboardPage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFD94475), Color(0xFFA32653)],
-              ),
+              gradient: const LinearGradient(colors: [rose, roseDark]),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x33441F31),
@@ -650,28 +644,28 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: 'Boarders',
                 value: stats['boarders'] ?? 0,
                 icon: Icons.people_alt_rounded,
-                tint: const Color(0xFFDDECF7),
+                tint: paleBlue,
                 onTap: () => widget.onOpen(2),
               ),
               _StatCard(
                 label: 'Occupied rooms',
                 value: stats['occupiedRooms'] ?? 0,
                 icon: Icons.meeting_room_rounded,
-                tint: const Color(0xFFFFE0E9),
+                tint: paleRose,
                 onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Open beds',
                 value: stats['availableBeds'] ?? 0,
                 icon: Icons.bed_rounded,
-                tint: const Color(0xFFE5F0D9),
+                tint: paleBlue,
                 onTap: () => widget.onOpen(1),
               ),
               _StatCard(
                 label: 'Unpaid rent',
                 value: stats['unpaid'] ?? 0,
                 icon: Icons.receipt_long_rounded,
-                tint: const Color(0xFFFFECCD),
+                tint: paleRose,
                 onTap: () => widget.onOpen(3),
               ),
             ],
@@ -912,11 +906,7 @@ class _StatCard extends StatelessWidget {
                   ),
                   child: Icon(icon, color: roseDark, size: 20),
                 ),
-                const Icon(
-                  Icons.arrow_outward_rounded,
-                  color: Color(0xFFB8A4AE),
-                  size: 17,
-                ),
+                const Icon(Icons.arrow_outward_rounded, color: muted, size: 17),
               ],
             ),
             Text(
@@ -988,9 +978,7 @@ class _BedPreview extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: occupied
-                            ? const Color(0xFFFBE3E9)
-                            : const Color(0xFFE7F2F9),
+                        color: occupied ? paleRose : paleBlue,
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: Text(
@@ -998,9 +986,7 @@ class _BedPreview extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: occupied
-                              ? roseDark
-                              : const Color.fromARGB(255, 60, 72, 138),
+                          color: occupied ? roseDark : blueDark,
                         ),
                       ),
                     );
@@ -1011,10 +997,7 @@ class _BedPreview extends StatelessWidget {
                   children: [
                     _LegendDot(color: rose, label: 'Occupied'),
                     SizedBox(width: 16),
-                    _LegendDot(
-                      color: Color.fromARGB(255, 60, 72, 138),
-                      label: 'Available',
-                    ),
+                    _LegendDot(color: blueDark, label: 'Available'),
                   ],
                 ),
               ],
@@ -1041,7 +1024,8 @@ class _LegendDot extends StatelessWidget {
   );
 }
 
-// Boarders page, boarder forms/details, and payment history.
+// BOARDER PAGE
+// Boarder directory: search, add/edit/delete, and links to boarder details.
 class BoardersPage extends StatefulWidget {
   const BoardersPage({
     super.key,
@@ -1219,7 +1203,7 @@ class _BoarderTile extends StatelessWidget {
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         leading: CircleAvatar(
-          backgroundColor: lilac,
+          backgroundColor: paleBlue,
           foregroundColor: roseDark,
           child: Text(
             name.isEmpty ? '?' : name[0].toUpperCase(),
@@ -1242,6 +1226,7 @@ class _BoarderTile extends StatelessWidget {
   }
 }
 
+// Add/edit boarder form / assigning a new boarder to a bed.
 class BoarderFormDialog extends StatefulWidget {
   const BoarderFormDialog({super.key, this.person});
   final Map<String, Object?>? person;
@@ -1350,6 +1335,7 @@ Widget _formField(
       : null,
 );
 
+// Boarder details: contact information, room, rent summary, and history links.
 class BoarderDetailsPage extends StatefulWidget {
   const BoarderDetailsPage({super.key, required this.id});
   final int id;
@@ -1362,6 +1348,7 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
   Map<String, Object?>? _person;
   List<Map<String, Object?>> _payments = [];
   Map<String, double> _rentSummary = {'due': 0, 'paid': 0};
+  String? _rentDueDate;
   bool _loading = true;
 
   @override
@@ -1377,11 +1364,13 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
       final rentSummary = await AppDatabase.instance.boarderRentSummary(
         widget.id,
       );
+      final rentDueDate = await AppDatabase.instance.boarderDueDate(widget.id);
       if (mounted) {
         setState(() {
           _person = person;
           _payments = payments;
           _rentSummary = rentSummary;
+          _rentDueDate = rentDueDate;
           _loading = false;
         });
       }
@@ -1456,6 +1445,7 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
                       'Balance',
                       '₱${(_rentSummary['due']! - _rentSummary['paid']!).clamp(0, double.infinity).toStringAsFixed(2)}',
                     ),
+                    ('Due date', _rentDueDate ?? '—'),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -1548,6 +1538,7 @@ class _InfoCard extends StatelessWidget {
   );
 }
 
+// Payment history for an individual boarder.
 class PaymentHistoryPage extends StatefulWidget {
   const PaymentHistoryPage({super.key, required this.id, required this.name});
   final int id;
@@ -1616,8 +1607,8 @@ class _PaymentTile extends StatelessWidget {
     color: Colors.white,
     child: ListTile(
       leading: const CircleAvatar(
-        backgroundColor: Color(0xFFE1F1E9),
-        child: Icon(Icons.check_rounded, color: green),
+        backgroundColor: paleBlue,
+        child: Icon(Icons.check_rounded, color: success),
       ),
       title: Text(
         '₱${(payment['amount'] as num).toStringAsFixed(2)}',
@@ -1631,7 +1622,8 @@ class _PaymentTile extends StatelessWidget {
   );
 }
 
-// Rooms page and the room/bedspace map.
+//BEDSPACE MAP
+// Bedspace map: room availability and assignment of a boarder to a bed.
 class RoomsPage extends StatefulWidget {
   const RoomsPage({
     super.key,
@@ -1736,7 +1728,7 @@ class _RoomsPageState extends State<RoomsPage> {
                       ...people.map(
                         (person) => ListTile(
                           leading: const CircleAvatar(
-                            backgroundColor: lilac,
+                            backgroundColor: paleBlue,
                             child: Icon(Icons.person_outline, color: roseDark),
                           ),
                           title: Text(
@@ -1755,7 +1747,7 @@ class _RoomsPageState extends State<RoomsPage> {
                       ),
                       ListTile(
                         leading: const CircleAvatar(
-                          backgroundColor: lilac,
+                          backgroundColor: paleBlue,
                           child: Icon(Icons.person_add_alt_1, color: roseDark),
                         ),
                         title: const Text('Add new boarder and assign'),
@@ -1804,10 +1796,7 @@ class _RoomsPageState extends State<RoomsPage> {
           const SizedBox(height: 12),
           const Row(
             children: [
-              _LegendDot(
-                color: blue,
-                label: 'Available',
-              ),
+              _LegendDot(color: blueDark, label: 'Available'),
               SizedBox(width: 16),
               _LegendDot(color: rose, label: 'Occupied'),
             ],
@@ -1819,13 +1808,21 @@ class _RoomsPageState extends State<RoomsPage> {
               subtitle: building == 1 ? 'Double-deck rooms' : 'Private rooms',
             ),
             const SizedBox(height: 10),
-            ..._roomsOf(building).entries.map(
-              (entry) => _RoomCard(
-                room: entry.key,
-                beds: entry.value,
-                onBedTap: _assign,
-              ),
-            ),
+            for (final floor in [1, 2])
+              if (_roomsOf(building, floor).isNotEmpty) ...[
+                _SectionTitle(
+                  'Floor $floor',
+                  subtitle: '${_roomsOf(building, floor).length} rooms',
+                ),
+                const SizedBox(height: 8),
+                ..._roomsOf(building, floor).entries.map(
+                  (entry) => _RoomCard(
+                    room: entry.key,
+                    beds: entry.value,
+                    onBedTap: _assign,
+                  ),
+                ),
+              ],
             const SizedBox(height: 16),
           ],
         ],
@@ -1833,9 +1830,14 @@ class _RoomsPageState extends State<RoomsPage> {
     );
   }
 
-  Map<String, List<Map<String, Object?>>> _roomsOf(Object? building) {
+  Map<String, List<Map<String, Object?>>> _roomsOf(
+    Object? building,
+    int floor,
+  ) {
     final result = <String, List<Map<String, Object?>>>{};
-    for (final bed in _beds.where((row) => row['building'] == building)) {
+    for (final bed in _beds.where(
+      (row) => row['building'] == building && row['floor'] == floor,
+    )) {
       (result['${bed['room_number']}'] ??= []).add(bed);
     }
     return result;
@@ -1887,6 +1889,11 @@ class _RoomCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 4),
+            Text(
+              '₱${(beds.first['monthly_rate'] as num).toStringAsFixed(0)} per boarder / month',
+              style: const TextStyle(color: muted, fontSize: 12),
+            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1903,18 +1910,14 @@ class _RoomCard extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: occupied
-                          ? const Color(0xFFFBE4E9)
-                          : const Color(0xFFE7F2F9),
+                      color: occupied ? paleRose : paleBlue,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       children: [
                         Icon(
                           Icons.bed_rounded,
-                          color: occupied
-                              ? roseDark
-                              : blue,
+                          color: occupied ? roseDark : blueDark,
                           size: 18,
                         ),
                         const SizedBox(height: 3),
@@ -1923,9 +1926,7 @@ class _RoomCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: occupied
-                                ? roseDark
-                                : blue,
+                            color: occupied ? roseDark : blueDark,
                           ),
                         ),
                         Text(
@@ -1948,7 +1949,8 @@ class _RoomCard extends StatelessWidget {
   }
 }
 
-// Rent page, rent editing, and payment dialogs.
+// RENT BILLING PAGE
+// Rent Billing: monthly charges, payment status, and payment actions.
 class RentPage extends StatefulWidget {
   const RentPage({
     super.key,
@@ -2075,7 +2077,7 @@ class _RentPageState extends State<RentPage> {
       'Record the remaining ₱${balance.toStringAsFixed(2)} for '
           '${charge['boarder_name']} (${charge['billing_month']}) as a payment?',
       confirmLabel: 'Save Changes',
-      confirmColor: green,
+      confirmColor: success,
     );
     if (!confirmed) return;
     try {
@@ -2166,10 +2168,10 @@ class _RentPageState extends State<RentPage> {
                       ? 'Balance'
                       : 'Unpaid';
                   final color = status == 'Paid'
-                      ? green
+                      ? success
                       : status == 'Balance'
-                      ? amber
-                      : red;
+                      ? attention
+                      : danger;
                   return Card(
                     margin: EdgeInsets.zero,
                     elevation: 0,
@@ -2229,8 +2231,8 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Record payment'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: blue,
-                                    side: const BorderSide(color: blue),
+                                    foregroundColor: roseDark,
+                                    side: const BorderSide(color: occupiedPink),
                                   ),
                                 ),
                               if (balance > .001)
@@ -2242,10 +2244,8 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Mark paid'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: green,
-                                    side: const BorderSide(
-                                      color: Color(0xFFB9E2D0),
-                                    ),
+                                    foregroundColor: success,
+                                    side: const BorderSide(color: success),
                                   ),
                                 ),
                               OutlinedButton.icon(
@@ -2284,7 +2284,7 @@ class _MoneyLabel extends StatelessWidget {
       Text(
         '₱${amount.toStringAsFixed(2)}',
         style: TextStyle(
-          color: emphasis ? red : ink,
+          color: emphasis ? danger : ink,
           fontWeight: FontWeight.w800,
           fontSize: 12,
         ),
@@ -2293,6 +2293,7 @@ class _MoneyLabel extends StatelessWidget {
   );
 }
 
+// Rent dialogs: edit or add a charge, then record payments.
 class EditRentDialog extends StatefulWidget {
   const EditRentDialog({super.key, required this.charge});
   final Map<String, Object?> charge;
@@ -2367,7 +2368,11 @@ class _EditRentDialogState extends State<EditRentDialog> {
         onPressed: () => Navigator.pop(context),
         child: const Text('Cancel'),
       ),
-      FilledButton(onPressed: _save, child: const Text('Save changes')),
+      FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: success),
+        onPressed: _save,
+        child: const Text('Save changes'),
+      ),
     ],
   );
 }
@@ -2383,7 +2388,7 @@ class _AddRentDialogState extends State<AddRentDialog> {
   List<Map<String, Object?>> _people = [];
   int? _boarderId;
   final _month = TextEditingController(text: _currentMonth());
-  final _amount = TextEditingController(text: '3500');
+  final _amount = TextEditingController();
   final _dueDate = TextEditingController(text: _today());
 
   @override
@@ -2406,6 +2411,23 @@ class _AddRentDialogState extends State<AddRentDialog> {
       if (mounted) setState(() => _people = people);
     } catch (error) {
       if (mounted) _showMessage(context, 'Could not load boarders: $error');
+    }
+  }
+
+  Future<void> _selectBoarder(int? boarderId) async {
+    setState(() {
+      _boarderId = boarderId;
+      _amount.clear();
+    });
+    if (boarderId == null) return;
+    try {
+      final rate = await AppDatabase.instance.monthlyRateForBoarder(boarderId);
+      if (!mounted || _boarderId != boarderId) return;
+      _amount.text = rate?.toStringAsFixed(2) ?? '';
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, 'Could not load the boarder’s room rate: $error');
+      }
     }
   }
 
@@ -2451,7 +2473,7 @@ class _AddRentDialogState extends State<AddRentDialog> {
                   ),
                 )
                 .toList(),
-            onChanged: (value) => setState(() => _boarderId = value),
+            onChanged: _selectBoarder,
           ),
           const SizedBox(height: 12),
           _formField(_month, 'Billing month (YYYY-MM)'),
@@ -2544,7 +2566,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   );
 }
 
-// Complaints page and the new complaint form.
+// Complaints: search, status filters, updates, and resolved history.
 class ComplaintsPage extends StatefulWidget {
   const ComplaintsPage({
     super.key,
@@ -2710,10 +2732,10 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                   final row = _rows[index];
                   final status = '${row['status']}';
                   final color = status == 'Resolved'
-                      ? green
+                      ? success
                       : status == 'Being handled'
-                      ? amber
-                      : red;
+                      ? attention
+                      : danger;
                   return Card(
                     elevation: 0,
                     color: Colors.white,
@@ -2745,7 +2767,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                                   ),
                                   icon: const Icon(
                                     Icons.close_rounded,
-                                    color: red,
+                                    color: danger,
                                   ),
                                 )
                               else
@@ -2818,6 +2840,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
   );
 }
 
+// New complaint form opened from the complaints page.
 class AddComplaintDialog extends StatefulWidget {
   const AddComplaintDialog({super.key, required this.people});
   final List<Map<String, Object?>> people;
@@ -2891,7 +2914,7 @@ class _AddComplaintDialogState extends State<AddComplaintDialog> {
   );
 }
 
-// Shared UI components and helper functions used across pages.
+// Shared presentation widgets used by the app's management pages.
 class _StatusPill extends StatelessWidget {
   const _StatusPill(this.text, this.color);
   final String text;
@@ -2930,8 +2953,8 @@ class _QuickTile extends StatelessWidget {
     child: ListTile(
       onTap: onTap,
       leading: const CircleAvatar(
-        backgroundColor: Color(0xFFFFEFD9),
-        child: Icon(Icons.chat_bubble_outline, color: amber),
+        backgroundColor: paleRose,
+        child: Icon(Icons.chat_bubble_outline, color: rose),
       ),
       title: Text(
         title,
@@ -2980,7 +3003,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 42, color: const Color(0xFFC9B8C0)),
+          Icon(icon, size: 42, color: muted),
           const SizedBox(height: 10),
           Text(
             text,
@@ -2998,7 +3021,7 @@ Future<bool> _confirm(
   String title,
   String message, {
   String confirmLabel = 'Delete',
-  Color confirmColor = red,
+  Color confirmColor = danger,
 }) async =>
     await showDialog<bool>(
       context: context,

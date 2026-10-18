@@ -110,7 +110,7 @@ class AppDatabase {
 
     _database = await openDatabase(
       databasePath,
-      version: 4,
+      version: 5,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await _createTables(db);
@@ -166,7 +166,10 @@ class AppDatabase {
           await db.execute(
             'ALTER TABLE bed ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
           );
+        }
+        if (oldVersion < 5) {
           await _migrateRoomLayout(db);
+          await _correctCurrentMonthCharges(db);
         }
       },
     );
@@ -432,6 +435,41 @@ class AppDatabase {
     }
   }
 
+  Future<void> _correctCurrentMonthCharges(Database db) async {
+    final now = DateTime.now();
+    final month =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+    await db.execute(
+      '''
+      UPDATE rent_charge
+      SET amount_due = MAX(
+        (
+          SELECT r.monthly_rate
+          FROM room_assignment a
+          JOIN bed bd ON bd.bed_id = a.bed_id
+          JOIN room r ON r.room_id = bd.room_id
+          WHERE a.boarder_id = rent_charge.boarder_id
+            AND a.status = 'active' AND bd.is_active = 1 AND r.is_active = 1
+        ),
+        COALESCE((
+          SELECT SUM(p.amount) FROM payment p
+          WHERE p.charge_id = rent_charge.charge_id
+        ), 0)
+      )
+      WHERE billing_month = ?
+        AND EXISTS (
+          SELECT 1
+          FROM room_assignment a
+          JOIN bed bd ON bd.bed_id = a.bed_id
+          JOIN room r ON r.room_id = bd.room_id
+          WHERE a.boarder_id = rent_charge.boarder_id
+            AND a.status = 'active' AND bd.is_active = 1 AND r.is_active = 1
+        )
+      ''',
+      [month],
+    );
+  }
+
   // Authentication and dashboard summary queries.
   Future<Map<String, Object?>?> authenticate(
     String username,
@@ -671,10 +709,27 @@ class AppDatabase {
       FROM room_assignment a
       JOIN bed bd ON bd.bed_id = a.bed_id
       JOIN room r ON r.room_id = bd.room_id
-      WHERE a.status = 'active'
+      WHERE a.status = 'active' AND bd.is_active = 1 AND r.is_active = 1
     ''',
       [month, dueDate],
     );
+  }
+
+  Future<double?> monthlyRateForBoarder(int boarderId) async {
+    final rows = await (await database).rawQuery(
+      '''
+      SELECT r.monthly_rate
+      FROM room_assignment a
+      JOIN bed bd ON bd.bed_id = a.bed_id
+      JOIN room r ON r.room_id = bd.room_id
+      WHERE a.boarder_id = ? AND a.status = 'active'
+        AND bd.is_active = 1 AND r.is_active = 1
+      ''',
+      [boarderId],
+    );
+    return rows.isEmpty
+        ? null
+        : (rows.first['monthly_rate']! as num).toDouble();
   }
 
   Future<int> addCharge(
@@ -753,6 +808,32 @@ class AppDatabase {
       'due': (row['total_due']! as num).toDouble(),
       'paid': (row['total_paid']! as num).toDouble(),
     };
+  }
+
+  Future<String?> boarderDueDate(int boarderId) async {
+    final db = await database;
+    final unpaid = await db.rawQuery(
+      '''
+      SELECT c.due_date
+      FROM rent_charge c
+      WHERE c.boarder_id = ? AND c.amount_due > COALESCE((
+        SELECT SUM(p.amount) FROM payment p WHERE p.charge_id = c.charge_id
+      ), 0)
+      ORDER BY c.due_date, c.billing_month
+      LIMIT 1
+      ''',
+      [boarderId],
+    );
+    if (unpaid.isNotEmpty) return unpaid.first['due_date']! as String;
+    final latest = await db.query(
+      'rent_charge',
+      columns: ['due_date'],
+      where: 'boarder_id = ?',
+      whereArgs: [boarderId],
+      orderBy: 'billing_month DESC, due_date DESC',
+      limit: 1,
+    );
+    return latest.isEmpty ? null : latest.first['due_date']! as String;
   }
 
   // Payment recording and payment history.
