@@ -2231,8 +2231,15 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Record payment'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: roseDark,
-                                    side: const BorderSide(color: occupiedPink),
+                                    foregroundColor: const Color.fromARGB(
+                                      255,
+                                      38,
+                                      72,
+                                      135,
+                                    ),
+                                    side: const BorderSide(
+                                      color: Color.fromARGB(255, 179, 210, 245),
+                                    ),
                                   ),
                                 ),
                               if (balance > .001)
