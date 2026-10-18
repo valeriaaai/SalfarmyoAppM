@@ -1,6 +1,7 @@
-# Salfarmyo Dormitory (Android / Flutter)
+# Salfarmyo Dormitory (Android / Windows / Flutter)
 
-Offline Android dormitory management app built with Flutter, Dart, and SQLite.
+Offline dormitory management app for Android and Windows, built with Flutter,
+Dart, and SQLite.
 The UI and local database are packaged in the APK; the installed app does not
 need an internet connection, a server, or a separate SQL application.
 
@@ -73,6 +74,24 @@ Complaints can be filtered by status and updated as they are handled.
 
 No MySQL, SQL Server, SQLite Browser, or database server is needed on the phone.
 SQLite is embedded in the application. Network access is not used by the app.
+
+## Run the Windows desktop version
+
+The project also includes a Windows desktop runner, so you can demonstrate the
+app on this PC if an Android emulator is unavailable. Install Visual Studio with
+the **Desktop development with C++** workload, then from this `flutter_app`
+directory run:
+
+```powershell
+flutter pub get
+flutter devices
+flutter run -d windows
+```
+
+Windows uses SQLite FFI and stores its database in the Windows application
+support directory. Android continues to use its existing SQLite plugin and
+keeps its database in Android app storage. These databases are separate; running
+the Windows version does not change or prevent building the Android APK.
 
 ## Run on an Android phone
 

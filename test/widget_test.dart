@@ -1,3 +1,4 @@
+// Widget tests for the app's initial login screen.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:salfarmyo_mobile/main.dart';

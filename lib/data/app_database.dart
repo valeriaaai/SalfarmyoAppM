@@ -1,11 +1,17 @@
+// Local SQLite persistence: database setup, migrations, and feature queries.
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart'
+    show databaseFactory, databaseFactoryFfi, sqfliteFfiInit;
 
+// Room and bed definitions used to create the initial layout and migrate it.
 class _RoomDefinition {
   const _RoomDefinition({
     required this.building,
@@ -74,6 +80,7 @@ List<_RoomDefinition> _roomDefinitions() {
   ];
 }
 
+// Shared local SQLite database for the Flutter app.
 class AppDatabase {
   AppDatabase._();
 
@@ -81,15 +88,28 @@ class AppDatabase {
   Database? _database;
   Future<Database>? _opening;
 
+  // Database instance and platform-specific opening logic.
   Future<Database> get database async {
     if (_database != null) return _database!;
     return _opening ??= _openDatabase();
   }
 
+  // Opens or upgrades the local SQLite database.
   Future<Database> _openDatabase() async {
-    final root = await getDatabasesPath();
+    late final String databasePath;
+    if (Platform.isWindows) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      final directory = await getApplicationSupportDirectory();
+      await directory.create(recursive: true);
+      databasePath = p.join(directory.path, 'salfarmyo.db');
+    } else {
+      final root = await getDatabasesPath();
+      databasePath = p.join(root, 'salfarmyo.db');
+    }
+
     _database = await openDatabase(
-      p.join(root, 'salfarmyo.db'),
+      databasePath,
       version: 4,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
@@ -153,6 +173,7 @@ class AppDatabase {
     return _database!;
   }
 
+  // Creates the SQLite tables and indexes.
   Future<void> _createTables(Database db) async {
     await db.execute('''
       CREATE TABLE admin (
@@ -244,6 +265,7 @@ class AppDatabase {
     ''');
   }
 
+  // Adds the starter admin account, rooms, and beds to a new database.
   Future<void> _seed(Database db) async {
     final salt = _newSalt();
     await db.insert('admin', {
@@ -271,6 +293,7 @@ class AppDatabase {
     }
   }
 
+  // Migrates the room/bed layout while retaining current assignments.
   Future<void> _migrateRoomLayout(Database db) async {
     final assignments = await db.rawQuery('''
       SELECT a.assignment_id, a.boarder_id, a.bed_id, a.date_assigned,
@@ -409,6 +432,7 @@ class AppDatabase {
     }
   }
 
+  // Authentication and dashboard summary queries.
   Future<Map<String, Object?>?> authenticate(
     String username,
     String password,
@@ -473,6 +497,7 @@ class AppDatabase {
     };
   }
 
+  // Boarder search, details, create/update, and delete operations.
   Future<List<Map<String, Object?>>> boarders([String search = '']) async {
     final db = await database;
     return db.rawQuery(
@@ -568,6 +593,7 @@ class AppDatabase {
     });
   }
 
+  // Bedspace listing and boarder room-assignment operations.
   Future<List<Map<String, Object?>>> beds() async {
     final db = await database;
     return db.rawQuery('''
@@ -606,6 +632,7 @@ class AppDatabase {
     });
   }
 
+  // Rent charge queries, creation, updates, and balance summaries.
   Future<List<Map<String, Object?>>> charges([
     String search = '',
     String statusFilter = 'All',
@@ -728,6 +755,7 @@ class AppDatabase {
     };
   }
 
+  // Payment recording and payment history.
   Future<void> recordPayment(
     int chargeId,
     double amount,
@@ -768,6 +796,7 @@ class AppDatabase {
     );
   }
 
+  // Active/resolved complaint queries and complaint management.
   Future<List<Map<String, Object?>>> complaints([
     String search = '',
     String statusFilter = 'All',
@@ -839,6 +868,7 @@ class AppDatabase {
     );
   }
 
+  // Password hashing and shared date formatting helpers.
   String _newSalt() {
     final random = Random.secure();
     return List<int>.generate(

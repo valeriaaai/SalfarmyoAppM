@@ -1,3 +1,4 @@
+// Flutter app entry point and UI pages for login, dashboard, and dormitory features.
 import 'package:flutter/material.dart';
 
 import 'data/app_database.dart';
@@ -6,17 +7,20 @@ const ink = Color(0xFF3C2634);
 const muted = Color(0xFF866F7A);
 const canvas = Color(0xFFFFEAF1);
 const rose = Color(0xFFD53E72);
-const roseDark = Color(0xFFA32653);
+const roseDark = Color(0xFFA42753);
+const blue = Color(0xFF3478A5);
 const lilac = Color(0xFFDDECF7);
 const green = Color(0xFF668A3C);
 const amber = Color(0xFFC48A36);
 const red = Color(0xFFBB3D61);
 
+// App startup.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const SalfarmyoApp());
 }
 
+// Application theme and root widget.
 class SalfarmyoApp extends StatelessWidget {
   const SalfarmyoApp({super.key});
 
@@ -76,6 +80,7 @@ class SalfarmyoApp extends StatelessWidget {
   );
 }
 
+// Login page.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -339,7 +344,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: FilledButton(
                                     onPressed: _busy ? null : _login,
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: rose,
+                                      backgroundColor: roseDark,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
@@ -412,6 +417,7 @@ class _FieldLabel extends StatelessWidget {
   );
 }
 
+// Main navigation shell for the dashboard and feature pages.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.adminName});
   final String adminName;
@@ -505,6 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _go(int index) => setState(() => _index = index);
 }
 
+// Dashboard page and its summary, rent, and room preview widgets.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
@@ -1034,6 +1041,7 @@ class _LegendDot extends StatelessWidget {
   );
 }
 
+// Boarders page, boarder forms/details, and payment history.
 class BoardersPage extends StatefulWidget {
   const BoardersPage({
     super.key,
@@ -1174,7 +1182,7 @@ class _BoardersPageState extends State<BoardersPage> {
           padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
           child: FloatingActionButton.extended(
             onPressed: () => _edit(),
-            backgroundColor: rose,
+            backgroundColor: blue,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('Add boarder'),
@@ -1623,6 +1631,7 @@ class _PaymentTile extends StatelessWidget {
   );
 }
 
+// Rooms page and the room/bedspace map.
 class RoomsPage extends StatefulWidget {
   const RoomsPage({
     super.key,
@@ -1796,7 +1805,7 @@ class _RoomsPageState extends State<RoomsPage> {
           const Row(
             children: [
               _LegendDot(
-                color: Color.fromARGB(255, 60, 72, 138),
+                color: blue,
                 label: 'Available',
               ),
               SizedBox(width: 16),
@@ -1905,7 +1914,7 @@ class _RoomCard extends StatelessWidget {
                           Icons.bed_rounded,
                           color: occupied
                               ? roseDark
-                              : const Color.fromARGB(255, 60, 72, 138),
+                              : blue,
                           size: 18,
                         ),
                         const SizedBox(height: 3),
@@ -1916,7 +1925,7 @@ class _RoomCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: occupied
                                 ? roseDark
-                                : const Color.fromARGB(255, 60, 72, 138),
+                                : blue,
                           ),
                         ),
                         Text(
@@ -1939,6 +1948,7 @@ class _RoomCard extends StatelessWidget {
   }
 }
 
+// Rent page, rent editing, and payment dialogs.
 class RentPage extends StatefulWidget {
   const RentPage({
     super.key,
@@ -2219,10 +2229,8 @@ class _RentPageState extends State<RentPage> {
                                   ),
                                   label: const Text('Record payment'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: roseDark,
-                                    side: const BorderSide(
-                                      color: Color(0xFFF0C7D2),
-                                    ),
+                                    foregroundColor: blue,
+                                    side: const BorderSide(color: blue),
                                   ),
                                 ),
                               if (balance > .001)
@@ -2536,6 +2544,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   );
 }
 
+// Complaints page and the new complaint form.
 class ComplaintsPage extends StatefulWidget {
   const ComplaintsPage({
     super.key,
@@ -2798,7 +2807,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 20, 16),
             child: FloatingActionButton.extended(
               onPressed: _add,
-              backgroundColor: const Color.fromARGB(255, 62, 77, 213),
+              backgroundColor: blue,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_comment_rounded),
               label: const Text('New complaint'),
@@ -2882,6 +2891,7 @@ class _AddComplaintDialogState extends State<AddComplaintDialog> {
   );
 }
 
+// Shared UI components and helper functions used across pages.
 class _StatusPill extends StatelessWidget {
   const _StatusPill(this.text, this.color);
   final String text;
