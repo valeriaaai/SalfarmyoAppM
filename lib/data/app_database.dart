@@ -110,7 +110,7 @@ class AppDatabase {
 
     _database = await openDatabase(
       databasePath,
-      version: 5,
+      version: 6,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await _createTables(db);
@@ -171,6 +171,17 @@ class AppDatabase {
           await _migrateRoomLayout(db);
           await _correctCurrentMonthCharges(db);
         }
+        if (oldVersion < 6) {
+          await db.execute(
+            "ALTER TABLE boarder ADD COLUMN emergency_contact_name TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            "ALTER TABLE boarder ADD COLUMN emergency_contact_relationship TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            "ALTER TABLE boarder ADD COLUMN emergency_contact_number TEXT NOT NULL DEFAULT ''",
+          );
+        }
       },
     );
     return _database!;
@@ -194,6 +205,9 @@ class AppDatabase {
         last_name TEXT NOT NULL,
         contact_number TEXT NOT NULL,
         emergency_contact TEXT NOT NULL DEFAULT '',
+        emergency_contact_name TEXT NOT NULL DEFAULT '',
+        emergency_contact_relationship TEXT NOT NULL DEFAULT '',
+        emergency_contact_number TEXT NOT NULL DEFAULT '',
         date_added TEXT NOT NULL
       )
     ''');
@@ -541,7 +555,9 @@ class AppDatabase {
     return db.rawQuery(
       '''
       SELECT b.boarder_id, b.first_name, b.last_name, b.contact_number,
-        b.emergency_contact, b.date_added, r.room_number, bd.code AS bed_code
+        b.emergency_contact, b.emergency_contact_name,
+        b.emergency_contact_relationship, b.emergency_contact_number,
+        b.date_added, r.room_number, bd.code AS bed_code
       FROM boarder b
       LEFT JOIN room_assignment a ON a.boarder_id = b.boarder_id AND a.status = 'active'
       LEFT JOIN bed bd ON bd.bed_id = a.bed_id
@@ -566,23 +582,61 @@ class AppDatabase {
     required String first,
     required String last,
     required String phone,
-    String emergency = '',
+    String emergencyName = '',
+    String emergencyRelationship = '',
+    String emergencyPhone = '',
   }) async {
     final db = await database;
-    if (first.trim().isEmpty || last.trim().isEmpty || phone.trim().isEmpty) {
+    final firstName = first.trim();
+    final lastName = last.trim();
+    final contactNumber = phone.trim();
+    final namePattern = RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ '-]+$");
+    if (firstName.isEmpty || lastName.isEmpty || contactNumber.isEmpty) {
       throw Exception(
         'First name, last name, and contact number are required.',
       );
     }
-    if (phone.trim().length < 7) {
-      throw Exception('Enter a valid contact number.');
+    if (!namePattern.hasMatch(firstName) || !namePattern.hasMatch(lastName)) {
+      throw Exception(
+        'Names can contain letters, spaces, apostrophes, or hyphens only.',
+      );
+    }
+    if (!RegExp(r'^\d{11}$').hasMatch(contactNumber)) {
+      throw Exception('Contact number must contain exactly 11 digits.');
+    }
+    final emergencyContactName = emergencyName.trim();
+    final emergencyContactRelationship = emergencyRelationship.trim();
+    final emergencyContactNumber = emergencyPhone.trim();
+    if ([
+      emergencyContactName,
+      emergencyContactRelationship,
+      emergencyContactNumber,
+    ].any((value) => value.isNotEmpty)) {
+      if (emergencyContactName.isEmpty ||
+          emergencyContactRelationship.isEmpty ||
+          emergencyContactNumber.isEmpty) {
+        throw Exception(
+          'Enter the emergency contact name, relationship, and 11-digit number.',
+        );
+      }
+      if (!namePattern.hasMatch(emergencyContactName) ||
+          !namePattern.hasMatch(emergencyContactRelationship)) {
+        throw Exception(
+          'Emergency contact name and relationship can contain letters only.',
+        );
+      }
+      if (!RegExp(r'^\d{11}$').hasMatch(emergencyContactNumber)) {
+        throw Exception(
+          'Emergency contact number must contain exactly 11 digits.',
+        );
+      }
     }
     final duplicate = await db.query(
       'boarder',
       where:
           'lower(first_name) = lower(?) AND lower(last_name) = lower(?) '
           'AND contact_number = ? AND boarder_id != ?',
-      whereArgs: [first.trim(), last.trim(), phone.trim(), id ?? 0],
+      whereArgs: [firstName, lastName, contactNumber, id ?? 0],
     );
     if (duplicate.isNotEmpty) {
       throw Exception(
@@ -590,10 +644,12 @@ class AppDatabase {
       );
     }
     final values = {
-      'first_name': first.trim(),
-      'last_name': last.trim(),
-      'contact_number': phone.trim(),
-      'emergency_contact': emergency.trim(),
+      'first_name': firstName,
+      'last_name': lastName,
+      'contact_number': contactNumber,
+      'emergency_contact_name': emergencyContactName,
+      'emergency_contact_relationship': emergencyContactRelationship,
+      'emergency_contact_number': emergencyContactNumber,
     };
     if (id == null) {
       return db.insert('boarder', {

@@ -9,7 +9,8 @@ need an internet connection, a server, or a separate SQL application.
 
 - Animated login with floating background shapes and an entrance animation.
 - Dashboard with boarder, room, available-bed, unpaid-rent, and complaint counts.
-- Boarder directory with search, add/edit/delete, a rent summary, and payment history.
+- Boarder directory with search, add/edit/delete, a rent summary, payment history,
+  and optional emergency-contact name, relationship, and 11-digit number.
 - Room/bedspace map grouped by building and floor; tap an open bed to assign an
   existing or new boarder. Each building has 4 rooms per floor. Building 1 has
   2 twin rooms with 2 beds each at ₱2,300 per boarder/month, and 6 bunk rooms
@@ -47,7 +48,9 @@ into the Android app; they are separate local databases.
 
 ## Main workflow
 After login, open the dashboard, then use the Rooms tab to select an available
-bed and assign an existing boarder or add a new one. The saved boarder and room
+bed and assign an existing boarder or add a new one after confirming the
+selected boarder and target room. Boarder names accept letters only, and
+contact numbers require exactly 11 digits. The saved boarder and room
 assignment appear in the searchable Boarders tab, where selecting a boarder
 opens their summary and payment history. The Rent tab opens on the current
 billing month, creates that month's charge from each occupied room's monthly

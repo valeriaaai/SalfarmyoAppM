@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'data/app_database.dart';
 
@@ -1240,7 +1241,9 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
   late final TextEditingController _first;
   late final TextEditingController _last;
   late final TextEditingController _phone;
-  late final TextEditingController _emergency;
+  late final TextEditingController _emergencyName;
+  late final TextEditingController _emergencyRelationship;
+  late final TextEditingController _emergencyPhone;
   bool _saving = false;
 
   @override
@@ -1253,8 +1256,14 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
     _phone = TextEditingController(
       text: widget.person?['contact_number'] as String?,
     );
-    _emergency = TextEditingController(
-      text: widget.person?['emergency_contact'] as String?,
+    _emergencyName = TextEditingController(
+      text: widget.person?['emergency_contact_name'] as String?,
+    );
+    _emergencyRelationship = TextEditingController(
+      text: widget.person?['emergency_contact_relationship'] as String?,
+    );
+    _emergencyPhone = TextEditingController(
+      text: widget.person?['emergency_contact_number'] as String?,
     );
   }
 
@@ -1263,7 +1272,9 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
     _first.dispose();
     _last.dispose();
     _phone.dispose();
-    _emergency.dispose();
+    _emergencyName.dispose();
+    _emergencyRelationship.dispose();
+    _emergencyPhone.dispose();
     super.dispose();
   }
 
@@ -1276,7 +1287,9 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
         first: _first.text,
         last: _last.text,
         phone: _phone.text,
-        emergency: _emergency.text,
+        emergencyName: _emergencyName.text,
+        emergencyRelationship: _emergencyRelationship.text,
+        emergencyPhone: _emergencyPhone.text,
       );
       if (mounted) Navigator.pop(context, id);
     } catch (error) {
@@ -1297,13 +1310,83 @@ class _BoarderFormDialogState extends State<BoarderFormDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _formField(_first, 'First name'),
+            _formField(
+              _first,
+              'First name',
+              inputFormatters: [_personNameFormatter()],
+            ),
             const SizedBox(height: 12),
-            _formField(_last, 'Last name'),
+            _formField(
+              _last,
+              'Last name',
+              inputFormatters: [_personNameFormatter()],
+            ),
             const SizedBox(height: 12),
-            _formField(_phone, 'Contact number', keyboard: TextInputType.phone),
+            _formField(
+              _phone,
+              'Contact number',
+              keyboard: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(11),
+              ],
+              validator: (value) =>
+                  value == null || !RegExp(r'^\d{11}$').hasMatch(value)
+                  ? 'Enter exactly 11 digits'
+                  : null,
+            ),
             const SizedBox(height: 12),
-            _formField(_emergency, 'Emergency contact', required: false),
+            _formField(
+              _emergencyName,
+              'Emergency contact name',
+              required: false,
+              inputFormatters: [_personNameFormatter()],
+              validator: (value) {
+                final anyEmergencyField =
+                    _emergencyName.text.trim().isNotEmpty ||
+                    _emergencyRelationship.text.trim().isNotEmpty ||
+                    _emergencyPhone.text.trim().isNotEmpty;
+                if (!anyEmergencyField) return null;
+                return value == null || value.trim().isEmpty
+                    ? 'Required when adding emergency contact details'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 12),
+            _formField(
+              _emergencyRelationship,
+              'Relationship',
+              required: false,
+              inputFormatters: [_personNameFormatter()],
+              validator: (value) {
+                final anyEmergencyField =
+                    _emergencyName.text.trim().isNotEmpty ||
+                    _emergencyRelationship.text.trim().isNotEmpty ||
+                    _emergencyPhone.text.trim().isNotEmpty;
+                if (!anyEmergencyField) return null;
+                return value == null || value.trim().isEmpty
+                    ? 'Required when adding emergency contact details'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 12),
+            _formField(
+              _emergencyPhone,
+              'Emergency contact number',
+              required: false,
+              keyboard: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(11),
+              ],
+              validator: (value) =>
+                  (_emergencyName.text.trim().isEmpty &&
+                          _emergencyRelationship.text.trim().isEmpty &&
+                          _emergencyPhone.text.trim().isEmpty) ||
+                      value != null && RegExp(r'^\d{11}$').hasMatch(value)
+                  ? null
+                  : 'Enter exactly 11 digits',
+            ),
           ],
         ),
       ),
@@ -1326,14 +1409,30 @@ Widget _formField(
   String label, {
   TextInputType? keyboard,
   bool required = true,
+  List<TextInputFormatter>? inputFormatters,
+  String? Function(String?)? validator,
 }) => TextFormField(
   controller: controller,
   keyboardType: keyboard,
+  inputFormatters: inputFormatters,
   decoration: InputDecoration(labelText: label),
-  validator: required
-      ? (value) => value == null || value.trim().isEmpty ? 'Required' : null
-      : null,
+  validator:
+      validator ??
+      (required
+          ? (value) => value == null || value.trim().isEmpty ? 'Required' : null
+          : null),
 );
+
+TextInputFormatter _personNameFormatter() =>
+    FilteringTextInputFormatter.allow(RegExp(r"[A-Za-zÀ-ÖØ-öø-ÿ\s'-]"));
+
+TextInputFormatter _decimalFormatter() => TextInputFormatter.withFunction(
+  (oldValue, newValue) =>
+      RegExp(r'^\d*\.?\d{0,2}$').hasMatch(newValue.text) ? newValue : oldValue,
+);
+
+TextInputFormatter _dateFormatter() =>
+    FilteringTextInputFormatter.allow(RegExp(r'[\d-]'));
 
 // Boarder details: contact information, room, rent summary, and history links.
 class BoarderDetailsPage extends StatefulWidget {
@@ -1418,7 +1517,12 @@ class _BoarderDetailsPageState extends State<BoarderDetailsPage> {
                     ('Phone', '${_person!['contact_number']}'),
                     (
                       'Emergency contact',
-                      '${_person!['emergency_contact'] ?? '—'}',
+                      _person!['emergency_contact_name'] == null ||
+                              '${_person!['emergency_contact_name']}'.isEmpty
+                          ? '${_person!['emergency_contact'] ?? '—'}'
+                          : '${_person!['emergency_contact_name']} '
+                                '(${_person!['emergency_contact_relationship']}) · '
+                                '${_person!['emergency_contact_number']}',
                     ),
                     ('Date added', '${_person!['date_added']}'),
                     (
@@ -1697,6 +1801,7 @@ class _RoomsPageState extends State<RoomsPage> {
           builder: (_) => const BoarderFormDialog(),
         );
         if (id == null) return;
+        if (!await _confirmAssignment(id, bed)) return;
         await AppDatabase.instance.assignBed(id, bed['bed_id']! as int);
         await _load();
         widget.onRefresh();
@@ -1770,6 +1875,7 @@ class _RoomsPageState extends State<RoomsPage> {
         ),
       );
       if (id == null) return;
+      if (!await _confirmAssignment(id, bed)) return;
       await AppDatabase.instance.assignBed(id, bed['bed_id']! as int);
       await _load();
       widget.onRefresh();
@@ -1778,6 +1884,43 @@ class _RoomsPageState extends State<RoomsPage> {
         _showMessage(context, error.toString().replaceFirst('Exception: ', ''));
       }
     }
+  }
+
+  Future<bool> _confirmAssignment(
+    int boarderId,
+    Map<String, Object?> bed,
+  ) async {
+    final person = await AppDatabase.instance.boarder(boarderId);
+    if (!mounted) return false;
+    if (person == null) {
+      throw Exception('The selected boarder could not be found.');
+    }
+    final currentRoom = person['room_number'];
+    final currentLocation = currentRoom == null
+        ? 'Not currently assigned'
+        : 'Currently assigned to room $currentRoom';
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Confirm room assignment'),
+            content: Text(
+              'Assign ${person['first_name']} ${person['last_name']} to '
+              'Building ${bed['building']}, Room ${bed['room_number']}, '
+              'Bed ${bed['code']}?\n$currentLocation.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Assign'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -2365,9 +2508,14 @@ class _EditRentDialogState extends State<EditRentDialog> {
           _amount,
           'Amount due',
           keyboard: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [_decimalFormatter()],
         ),
         const SizedBox(height: 12),
-        _formField(_dueDate, 'Due date (YYYY-MM-DD)'),
+        _formField(
+          _dueDate,
+          'Due date (YYYY-MM-DD)',
+          inputFormatters: [_dateFormatter()],
+        ),
       ],
     ),
     actions: [
@@ -2483,15 +2631,24 @@ class _AddRentDialogState extends State<AddRentDialog> {
             onChanged: _selectBoarder,
           ),
           const SizedBox(height: 12),
-          _formField(_month, 'Billing month (YYYY-MM)'),
+          _formField(
+            _month,
+            'Billing month (YYYY-MM)',
+            inputFormatters: [_dateFormatter()],
+          ),
           const SizedBox(height: 12),
           _formField(
             _amount,
             'Amount due',
             keyboard: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [_decimalFormatter()],
           ),
           const SizedBox(height: 12),
-          _formField(_dueDate, 'Due date (YYYY-MM-DD)'),
+          _formField(
+            _dueDate,
+            'Due date (YYYY-MM-DD)',
+            inputFormatters: [_dateFormatter()],
+          ),
         ],
       ),
     ),
@@ -2547,6 +2704,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
           _amount,
           'Payment amount',
           keyboard: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [_decimalFormatter()],
         ),
       ],
     ),
